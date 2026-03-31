@@ -13,6 +13,10 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = "./data.json";
 
+app.get("/", (req, res) => {
+  res.send("TradeCircle API is running 🚀");
+});
+
 // GET services
 app.get("/services", async (req, res) => {
   const data = await fs.readJson(DATA_FILE);
