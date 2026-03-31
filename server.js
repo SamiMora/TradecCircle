@@ -4,7 +4,7 @@ const fs = require("fs-extra");
 
 const app = express();
 app.use(cors({
-  origin: "https://69c9ff5d16676a66263655d8--sweet-lebkuchen-fe7a23.netlify.app"
+  origin: "*"
 }));
 
 app.use(express.json({ limit: "10mb" }));
@@ -17,30 +17,42 @@ app.get("/", (req, res) => {
   res.send("TradeCircle API is running 🚀");
 });
 
-// GET services
-app.get("/services", async (req, res) => {
-  const data = await fs.readJson(DATA_FILE);
-  res.json(data);
+// ROOT ROUTE
+app.get("/", (req, res) => {
+  res.send("TradeCircle API is running 🚀");
 });
 
-// POST new service
+// GET services
+app.get("/services", async (req, res) => {
+  try {
+    const data = await fs.readJson(DATA_FILE);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to read data" });
+  }
+});
+
+// POST service
 app.post("/services", async (req, res) => {
-  const { name, price, category, image } = req.body;
+  try {
+    const { name, price, category, image } = req.body;
 
-  const newService = {
-    id: Date.now(), // 🔥 UNIQUE ID
-    name,
-    price,
-    category,
-    image
-  };
+    const data = await fs.readJson(DATA_FILE);
+    const newService = {
+      id: Date.now(),
+      name,
+      price,
+      category,
+      image
+    };
 
-  const data = await fs.readJson(DATA_FILE);
-  data.push(newService);
+    data.push(newService);
+    await fs.writeJson(DATA_FILE, data);
 
-  await fs.writeJson(DATA_FILE, data);
-
-  res.json({ message: "Saved ✅", data: newService });
+    res.json(newService);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to save" });
+  }
 });
 
 // DELETE service
