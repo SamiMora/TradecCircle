@@ -226,7 +226,7 @@ async function addService() {
     console.log("Saving service...");
 
   if (window.editingId) {
-    await fetch(`http://localhost:3000/services/${window.editingId}`, {
+    await fetch(`https://tradecircle-api.onrender.com/services/${window.editingId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
@@ -261,7 +261,7 @@ async function addService() {
   loadServices();
 
 async function deleteService(id) {
-  await fetch(`http://localhost:3000/services/${id}`, {
+  await fetch(`https://tradecircle-api.onrender.com/services/${id}`, {
     method: "DELETE"
   });
 }

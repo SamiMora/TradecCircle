@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs-extra");
+console.log("Server file loaded correctly ✅");
 
 const app = express();
 app.use(cors({
