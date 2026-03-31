@@ -11,11 +11,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = "./data.json";
-
-app.get("/", (req, res) => {
-  res.send("TradeCircle API is running 🚀");
-});
+const path = require("path");
+const DATA_FILE = path.join(__dirname, "data.json");
 
 // ROOT ROUTE
 app.get("/", (req, res) => {
