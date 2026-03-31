@@ -23,19 +23,30 @@ app.get("/", (req, res) => {
 // GET services
 app.get("/services", async (req, res) => {
   try {
+    if (!(await fs.pathExists(DATA_FILE))) {
+      await fs.writeJson(DATA_FILE, []); // create file if missing
+    }
+
     const data = await fs.readJson(DATA_FILE);
     res.json(data);
   } catch (error) {
+    console.error("READ ERROR:", error);
     res.status(500).json({ error: "Failed to read data" });
   }
 });
 
 // POST service
 app.post("/services", async (req, res) => {
+  tapp.post("/services", async (req, res) => {
   try {
     const { name, price, category, image } = req.body;
 
+    if (!(await fs.pathExists(DATA_FILE))) {
+      await fs.writeJson(DATA_FILE, []);
+    }
+
     const data = await fs.readJson(DATA_FILE);
+
     const newService = {
       id: Date.now(),
       name,
@@ -49,6 +60,7 @@ app.post("/services", async (req, res) => {
 
     res.json(newService);
   } catch (error) {
+    console.error("SAVE ERROR:", error);
     res.status(500).json({ error: "Failed to save" });
   }
 });
