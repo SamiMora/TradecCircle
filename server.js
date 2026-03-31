@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs-extra");
-console.log("Server file loaded correctly ✅");
+console.log("🚀 SERVER STARTING...");
 
 const app = express();
 app.use(cors({
@@ -37,7 +37,6 @@ app.get("/services", async (req, res) => {
 
 // POST service
 app.post("/services", async (req, res) => {
-  tapp.post("/services", async (req, res) => {
   try {
     const { name, price, category, image } = req.body;
 
