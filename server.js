@@ -20,6 +20,10 @@ app.get("/", (req, res) => {
   res.send("TradeCircle API is running 🚀");
 });
 
+app.get("/test", (req, res) => {
+  res.send("TEST ROUTE WORKS ✅");
+});
+
 // GET services
 app.get("/services", async (req, res) => {
   try {
