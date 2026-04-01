@@ -155,8 +155,6 @@ async function saveService(name, price, category, image) {
 
     }
 
-    loadServices();
-
   } catch (err) {
     console.error("SAVE ERROR:", err);
   }
@@ -170,8 +168,6 @@ async function deleteService(id) {
     await fetch(`${API_URL}/${id}`, {
       method: "DELETE"
     });
-
-    loadServices();
 
   } catch (err) {
     console.error("DELETE ERROR:", err);
