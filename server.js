@@ -1,42 +1,74 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs-extra");
-console.log("🚀 SERVER STARTING...");
+const path = require("path");
+
+console.log("🚀 SERVER FILE LOADED");
 
 const app = express();
+
+// ✅ CORS (FIXES Netlify → Render connection)
 app.use(cors({
-  origin: "*"
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type"]
 }));
 
+// ✅ Body size limit (fixes image upload 413 error)
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
+// ✅ Port (Render uses this)
 const PORT = process.env.PORT || 3000;
-const path = require("path");
+
+// ✅ Correct file path (VERY IMPORTANT for Render)
 const DATA_FILE = path.join(__dirname, "data.json");
 
+
+// =======================
 // ROOT ROUTE
+// =======================
+app.get("/", (req, res) => {
+  res.send("TradeCircle API is running 🚀");
+});
+
+
+// =======================
+// TEST ROUTE (DEBUG)
+// =======================
 app.get("/test", (req, res) => {
   res.send("TEST ROUTE WORKS ✅");
 });
 
-// GET services
+
+// =======================
+// GET SERVICES
+// =======================
 app.get("/services", async (req, res) => {
+  console.log("📦 /services route hit");
+
   try {
+    // create file if missing
     if (!(await fs.pathExists(DATA_FILE))) {
-      await fs.writeJson(DATA_FILE, []); // create file if missing
+      await fs.writeJson(DATA_FILE, []);
     }
 
     const data = await fs.readJson(DATA_FILE);
     res.json(data);
+
   } catch (error) {
-    console.error("READ ERROR:", error);
+    console.error("❌ READ ERROR:", error);
     res.status(500).json({ error: "Failed to read data" });
   }
 });
 
-// POST service
+
+// =======================
+// POST SERVICE
+// =======================
 app.post("/services", async (req, res) => {
+  console.log("➕ POST /services hit");
+
   try {
     const { name, price, category, image } = req.body;
 
@@ -58,40 +90,68 @@ app.post("/services", async (req, res) => {
     await fs.writeJson(DATA_FILE, data);
 
     res.json(newService);
+
   } catch (error) {
-    console.error("SAVE ERROR:", error);
+    console.error("❌ SAVE ERROR:", error);
     res.status(500).json({ error: "Failed to save" });
   }
 });
 
-// DELETE service
+
+// =======================
+// DELETE SERVICE
+// =======================
 app.delete("/services/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
+  console.log("🗑 DELETE /services hit");
 
-  let data = await fs.readJson(DATA_FILE);
+  try {
+    const id = parseInt(req.params.id);
 
-  data = data.filter(service => service.id !== id);
+    let data = await fs.readJson(DATA_FILE);
 
-  await fs.writeJson(DATA_FILE, data);
+    data = data.filter(service => service.id !== id);
 
-  res.json({ message: "Deleted successfully ❌" });
+    await fs.writeJson(DATA_FILE, data);
+
+    res.json({ message: "Deleted successfully ❌" });
+
+  } catch (error) {
+    console.error("❌ DELETE ERROR:", error);
+    res.status(500).json({ error: "Failed to delete" });
+  }
 });
 
+
+// =======================
+// UPDATE SERVICE
+// =======================
 app.put("/services/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
-  const updatedData = req.body;
+  console.log("✏️ PUT /services hit");
 
-  let data = await fs.readJson(DATA_FILE);
+  try {
+    const id = parseInt(req.params.id);
+    const updatedData = req.body;
 
-  data = data.map(service =>
-    service.id === id ? { ...service, ...updatedData } : service
-  );
+    let data = await fs.readJson(DATA_FILE);
 
-  await fs.writeJson(DATA_FILE, data);
+    data = data.map(service =>
+      service.id === id ? { ...service, ...updatedData } : service
+    );
 
-  res.json({ message: "Updated successfully ✏️" });
+    await fs.writeJson(DATA_FILE, data);
+
+    res.json({ message: "Updated successfully ✏️" });
+
+  } catch (error) {
+    console.error("❌ UPDATE ERROR:", error);
+    res.status(500).json({ error: "Failed to update" });
+  }
 });
 
+
+// =======================
+// START SERVER
+// =======================
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
