@@ -10,9 +10,11 @@ const app = express();
 // ✅ CORS (FIXES Netlify → Render connection)
 app.use(cors({
   origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type"]
 }));
+
+app.options("*", cors());
 
 // ✅ Body size limit (fixes image upload 413 error)
 app.use(express.json({ limit: "10mb" }));

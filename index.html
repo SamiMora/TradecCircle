@@ -2,20 +2,13 @@
 <html>
 <head>
   <title>TradeCircle 🌌</title>
+
   <style>
     body {
-  font-family: Arial;
-  background: linear-gradient(to bottom, #ffffff, #f8fafc);
-  color: #0f172a;
-  text-align: center;
-}
-
-    h1 {
-  margin-top: 20px;
-  font-size: 2.5em;
-  font-weight: bold;
-  letter-spacing: 1px;
-}
+      font-family: Arial;
+      background: linear-gradient(to bottom, #ffffff, #f8fafc);
+      text-align: center;
+    }
 
     .container {
       display: flex;
@@ -24,13 +17,13 @@
     }
 
     .card {
-  background: white;
-  margin: 15px;
-  padding: 15px;
-  border-radius: 12px;
-  width: 250px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
+      background: white;
+      margin: 15px;
+      padding: 15px;
+      border-radius: 12px;
+      width: 250px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 
     img {
       width: 100%;
@@ -40,165 +33,80 @@
     input {
       margin: 5px;
       padding: 10px;
-      border-radius: 5px;
-      border: none;
     }
 
     button {
-  padding: 10px;
-  background: #f97316; /* orange */
-  border: none;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #ea580c;
-}
-
-    #filters {
-  margin: 20px;
-}
-
-#filters button {
-  margin: 5px;
-  padding: 10px;
-  border-radius: 5px;
-  border: none;
-  background: #0ea5e9;
-  color: white;
-  cursor: pointer;
-}
-
-#filters button:hover {
-  background: #0284c7;
-}
-
-#searchInput {
-  padding: 10px;
-  width: 250px;
-  margin: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
-
-.logo-container {
-  margin-top: 20px;
-}
-
-.logo {
-  width: 100px;
-  margin-bottom: 10px;
-}
-
-.trade {
-  color: #f97316; /* orange */
-}
-
-.circle {
-  color: #0ea5e9; /* blue */
-}
-  
-button {
-  margin-top: 10px;
-  padding: 8px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-button:hover {
-  opacity: 0.8;
-}
+      padding: 10px;
+      background: #f97316;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      margin-top: 5px;
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="logo-container">
-  <img src="tradecircle-logo.png" class="logo" />
-  <h1>
-  <span class="trade">Trade</span><span class="circle">Circle</span>
-</h1>
-</div>
+<h1>TradeCircle 🌌</h1>
 
-  <input 
-  type="text" 
-  id="searchInput" 
-  placeholder="Search services..." 
-  onkeyup="searchServices()"
-/>
-
-  <div id="filters">
-  <button onclick="filterServices('All')">All</button>
-  <button onclick="filterServices('Hair')">Hair</button>
-  <button onclick="filterServices('Auto')">Auto</button>
-  <button onclick="filterServices('Photography')">Photography</button>
-</div>
+<input id="searchInput" placeholder="Search..." onkeyup="searchServices()" />
 
 <div class="container" id="serviceList"></div>
 
-  <h2>Add Service</h2>
-  <input id="name" placeholder="Service name">
-  <input id="price" placeholder="Price">
-  <input id="category" placeholder="Category (Hair, Auto, etc)">
-  <input type="file" id="image">
-  <br>
-  <button onclick="addService()">Add</button>
+<h2>Add Service</h2>
+<input id="name" placeholder="Name">
+<input id="price" placeholder="Price">
+<input id="category" placeholder="Category">
+<input type="file" id="image">
+<br>
+<button onclick="addService()">Add</button>
 
-  <script>
-    const API_URL = "https://tradecircle-api.onrender.com/services";
+<script>
+
+const API_URL = "https://tradecircle-api.onrender.com/services";
 let allServices = [];
 
-async function loadServices() {
-  const res = await fetch(API_URL);
-  allServices = await res.json();
 
-  displayServices(allServices);
+// ================= LOAD =================
+async function loadServices() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+
+    allServices = data;
+    displayServices(data);
+
+  } catch (err) {
+    console.error("LOAD ERROR:", err);
+  }
 }
 
+
+// ================= DISPLAY =================
 function displayServices(services) {
   const list = document.getElementById("serviceList");
   list.innerHTML = "";
 
-  services.forEach((service) => {
-    const card = `
+  services.forEach(service => {
+    list.innerHTML += `
       <div class="card">
-        <img src="${service.image || 'tradecircle-logo.png'}" />
+        <img src="${service.image || ''}">
         <h3>${service.name}</h3>
         <p>$${service.price}</p>
         <p>${service.category}</p>
 
-        <button onclick="deleteService(${service.id})">Delete ❌</button>
-        <button onclick="editService(${service.id})">Edit ✏️</button>
+        <button onclick="deleteService(${service.id})">Delete</button>
+        <button onclick="editService(${service.id})">Edit</button>
       </div>
     `;
-    list.innerHTML += card;
   });
 }
 
-function filterServices(category) {
-  if (category === "All") {
-    displayServices(allServices);
-  } else {
-    const filtered = allServices.filter(s => s.category === category);
-    displayServices(filtered);
-  }
-}
 
-function editService(id) {
-  const service = allServices.find(s => s.id === id);
-
-  document.getElementById("name").value = service.name;
-  document.getElementById("price").value = service.price;
-  document.getElementById("category").value = service.category;
-
-  window.editingId = id;
-}
-
+// ================= ADD =================
 async function addService() {
-  console.log("Add button clicked");
 
   const name = document.getElementById("name").value;
   const price = document.getElementById("price").value;
@@ -212,7 +120,6 @@ async function addService() {
 
     reader.onloadend = async function () {
       image = reader.result;
-
       await saveService(name, price, category, image);
     };
 
@@ -222,52 +129,85 @@ async function addService() {
   }
 }
 
-  async function saveService(name, price, category, image) {
-    console.log("Saving service...");
 
-  if (window.editingId) {
-    await fetch(`https://tradecircle-api.onrender.com/services/${window.editingId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ name, price, category, image })
-    });
+// ================= SAVE =================
+async function saveService(name, price, category, image) {
 
-    window.editingId = null;
-  } else {
-    await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ name, price, category, image })
-    });
+  try {
+
+    if (window.editingId) {
+
+      await fetch(`${API_URL}/${window.editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, category, image })
+      });
+
+      window.editingId = null;
+
+    } else {
+
+      await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, category, image })
+      });
+
+    }
+
+    loadServices();
+
+  } catch (err) {
+    console.error("SAVE ERROR:", err);
   }
-
-  loadServices();
 }
 
-  function searchServices() {
+
+// ================= DELETE =================
+async function deleteService(id) {
+
+  try {
+    await fetch(`${API_URL}/${id}`, {
+      method: "DELETE"
+    });
+
+    loadServices();
+
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+  }
+}
+
+
+// ================= EDIT =================
+function editService(id) {
+  const service = allServices.find(s => s.id === id);
+
+  document.getElementById("name").value = service.name;
+  document.getElementById("price").value = service.price;
+  document.getElementById("category").value = service.category;
+
+  window.editingId = id;
+}
+
+
+// ================= SEARCH =================
+function searchServices() {
   const input = document.getElementById("searchInput").value.toLowerCase();
 
-  const filtered = allServices.filter(service =>
-    service.name.toLowerCase().includes(input) ||
-    service.category.toLowerCase().includes(input)
+  const filtered = allServices.filter(s =>
+    s.name.toLowerCase().includes(input) ||
+    s.category.toLowerCase().includes(input)
   );
 
   displayServices(filtered);
 }
-  loadServices();
 
-async function deleteService(id) {
-  await fetch(`https://tradecircle-api.onrender.com/services/${id}`, {
-    method: "DELETE"
-  });
-}
 
+// INIT
 loadServices();
-  </script>
+
+</script>
 
 </body>
 </html>
