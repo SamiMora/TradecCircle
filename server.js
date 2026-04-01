@@ -16,10 +16,6 @@ const path = require("path");
 const DATA_FILE = path.join(__dirname, "data.json");
 
 // ROOT ROUTE
-app.get("/", (req, res) => {
-  res.send("TradeCircle API is running 🚀");
-});
-
 app.get("/test", (req, res) => {
   res.send("TEST ROUTE WORKS ✅");
 });
