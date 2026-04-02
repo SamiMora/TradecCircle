@@ -1,79 +1,53 @@
 const express = require("express");
-const cors = require("cors");
 const fs = require("fs-extra");
 const path = require("path");
 
-console.log("🚀 SERVER FILE LOADED");
+console.log("🚀 SERVER STARTED");
 
 const app = express();
 
-// ✅ CORS (FIXES Netlify → Render connection)
+// ✅ MANUAL CORS FIX (THIS IS THE KEY)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
   next();
 });
 
-app.options("/services", (req, res) => {
-  res.sendStatus(200);
-});
-
-// ✅ Body size limit (fixes image upload 413 error)
+// ✅ BODY LIMIT (for images)
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-// ✅ Port (Render uses this)
 const PORT = process.env.PORT || 3000;
-
-// ✅ Correct file path (VERY IMPORTANT for Render)
 const DATA_FILE = path.join(__dirname, "data.json");
 
-
-// =======================
-// ROOT ROUTE
-// =======================
+// ROOT
 app.get("/", (req, res) => {
   res.send("TradeCircle API is running 🚀");
 });
 
-
-// =======================
-// TEST ROUTE (DEBUG)
-// =======================
-app.get("/test", (req, res) => {
-  res.send("TEST ROUTE WORKS ✅");
-});
-
-
-// =======================
-// GET SERVICES
-// =======================
+// GET
 app.get("/services", async (req, res) => {
-  console.log("📦 /services route hit");
-
   try {
-    // create file if missing
     if (!(await fs.pathExists(DATA_FILE))) {
       await fs.writeJson(DATA_FILE, []);
     }
 
     const data = await fs.readJson(DATA_FILE);
     res.json(data);
-
-  } catch (error) {
-    console.error("❌ READ ERROR:", error);
+  } catch (err) {
+    console.error("READ ERROR:", err);
     res.status(500).json({ error: "Failed to read data" });
   }
 });
 
-
-// =======================
-// POST SERVICE
-// =======================
+// POST
 app.post("/services", async (req, res) => {
-  console.log("➕ POST /services hit");
-
   try {
     const { name, price, category, image } = req.body;
 
@@ -95,68 +69,50 @@ app.post("/services", async (req, res) => {
     await fs.writeJson(DATA_FILE, data);
 
     res.json(newService);
-
-  } catch (error) {
-    console.error("❌ SAVE ERROR:", error);
+  } catch (err) {
+    console.error("SAVE ERROR:", err);
     res.status(500).json({ error: "Failed to save" });
   }
 });
 
-
-// =======================
-// DELETE SERVICE
-// =======================
+// DELETE
 app.delete("/services/:id", async (req, res) => {
-  console.log("🗑 DELETE /services hit");
-
   try {
     const id = parseInt(req.params.id);
 
     let data = await fs.readJson(DATA_FILE);
-
-    data = data.filter(service => service.id !== id);
+    data = data.filter(s => s.id !== id);
 
     await fs.writeJson(DATA_FILE, data);
 
-    res.json({ message: "Deleted successfully ❌" });
-
-  } catch (error) {
-    console.error("❌ DELETE ERROR:", error);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
     res.status(500).json({ error: "Failed to delete" });
   }
 });
 
-
-// =======================
-// UPDATE SERVICE
-// =======================
+// PUT
 app.put("/services/:id", async (req, res) => {
-  console.log("✏️ PUT /services hit");
-
   try {
     const id = parseInt(req.params.id);
-    const updatedData = req.body;
+    const updated = req.body;
 
     let data = await fs.readJson(DATA_FILE);
 
-    data = data.map(service =>
-      service.id === id ? { ...service, ...updatedData } : service
+    data = data.map(s =>
+      s.id === id ? { ...s, ...updated } : s
     );
 
     await fs.writeJson(DATA_FILE, data);
 
-    res.json({ message: "Updated successfully ✏️" });
-
-  } catch (error) {
-    console.error("❌ UPDATE ERROR:", error);
+    res.json({ message: "Updated" });
+  } catch (err) {
+    console.error("UPDATE ERROR:", err);
     res.status(500).json({ error: "Failed to update" });
   }
 });
 
-
-// =======================
-// START SERVER
-// =======================
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
