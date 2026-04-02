@@ -2,12 +2,19 @@
 <html>
 <head>
   <title>TradeCircle 🌌</title>
-
   <style>
     body {
       font-family: Arial;
       background: linear-gradient(to bottom, #ffffff, #f8fafc);
+      color: #0f172a;
       text-align: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5em;
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .container {
@@ -33,6 +40,8 @@
     input {
       margin: 5px;
       padding: 10px;
+      border-radius: 5px;
+      border: none;
     }
 
     button {
@@ -42,168 +51,223 @@
       border-radius: 6px;
       color: white;
       cursor: pointer;
-      margin-top: 5px;
+    }
+
+    button:hover {
+      background: #ea580c;
+    }
+
+    #filters {
+      margin: 20px;
+    }
+
+    #filters button {
+      margin: 5px;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      background: #0ea5e9;
+      color: white;
+      cursor: pointer;
+    }
+
+    #filters button:hover {
+      background: #0284c7;
+    }
+
+    #searchInput {
+      padding: 10px;
+      width: 250px;
+      margin: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .logo-container {
+      margin-top: 20px;
+    }
+
+    .logo {
+      width: 100px;
+      margin-bottom: 10px;
+    }
+
+    .trade {
+      color: #f97316;
+    }
+
+    .circle {
+      color: #0ea5e9;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.8;
     }
   </style>
 </head>
 
 <body>
 
-<h1>TradeCircle 🌌</h1>
+  <div class="logo-container">
+    <img src="tradecircle-logo.png" class="logo" />
+    <h1>
+      <span class="trade">Trade</span><span class="circle">Circle</span>
+    </h1>
+  </div>
 
-<input id="searchInput" placeholder="Search..." onkeyup="searchServices()" />
+  <input 
+    type="text" 
+    id="searchInput" 
+    placeholder="Search services..." 
+    onkeyup="searchServices()"
+  />
 
-<div class="container" id="serviceList"></div>
+  <div id="filters">
+    <button onclick="filterServices('All')">All</button>
+    <button onclick="filterServices('Hair')">Hair</button>
+    <button onclick="filterServices('Auto')">Auto</button>
+    <button onclick="filterServices('Photography')">Photography</button>
+  </div>
 
-<h2>Add Service</h2>
-<input id="name" placeholder="Name">
-<input id="price" placeholder="Price">
-<input id="category" placeholder="Category">
-<input type="file" id="image">
-<br>
-<button onclick="addService()">Add</button>
+  <div class="container" id="serviceList"></div>
 
-<script>
+  <h2>Add Service</h2>
+  <input id="name" placeholder="Service name">
+  <input id="price" placeholder="Price">
+  <input id="category" placeholder="Category (Hair, Auto, etc)">
+  <input type="file" id="image">
+  <br>
+  <button onclick="addService()">Add</button>
 
-const API_URL = "https://tradecircle-api.onrender.com/services";
-let allServices = [];
+  <script>
+    const API_URL = "https://tradecircle-api.onrender.com/services";
+    let allServices = [];
 
-
-// ================= LOAD =================
-async function loadServices() {
-  try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-
-    allServices = data;
-    displayServices(data);
-
-  } catch (err) {
-    console.error("LOAD ERROR:", err);
-  }
-}
-
-
-// ================= DISPLAY =================
-function displayServices(services) {
-  const list = document.getElementById("serviceList");
-  list.innerHTML = "";
-
-  services.forEach(service => {
-    list.innerHTML += `
-      <div class="card">
-        <img src="${service.image || ''}">
-        <h3>${service.name}</h3>
-        <p>$${service.price}</p>
-        <p>${service.category}</p>
-
-        <button onclick="deleteService(${service.id})">Delete</button>
-        <button onclick="editService(${service.id})">Edit</button>
-      </div>
-    `;
-  });
-}
-
-
-// ================= ADD =================
-async function addService() {
-
-  const name = document.getElementById("name").value;
-  const price = document.getElementById("price").value;
-  const category = document.getElementById("category").value;
-  const file = document.getElementById("image").files[0];
-
-  let image = "";
-
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onloadend = async function () {
-      image = reader.result;
-      await saveService(name, price, category, image);
-    };
-
-    reader.readAsDataURL(file);
-  } else {
-    await saveService(name, price, category, image);
-  }
-}
-
-
-// ================= SAVE =================
-async function saveService(name, price, category, image) {
-
-  try {
-
-    if (window.editingId) {
-
-      await fetch(`${API_URL}/${window.editingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, category, image })
-      });
-
-      window.editingId = null;
-
-    } else {
-
-      await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, category, image })
-      });
-
+    async function loadServices() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        allServices = data;
+        displayServices(allServices);
+      } catch (error) {
+        console.error("LOAD ERROR:", error);
+      }
     }
 
-  } catch (err) {
-    console.error("SAVE ERROR:", err);
-  }
-}
+    function displayServices(services) {
+      const list = document.getElementById("serviceList");
+      list.innerHTML = "";
 
+      services.forEach((service) => {
+        const card = `
+          <div class="card">
+            <img src="${service.image || 'tradecircle-logo.png'}" />
+            <h3>${service.name}</h3>
+            <p>$${service.price}</p>
+            <p>${service.category}</p>
 
-// ================= DELETE =================
-async function deleteService(id) {
+            <button onclick="deleteService(${service.id})">Delete ❌</button>
+            <button onclick="editService(${service.id})">Edit ✏️</button>
+          </div>
+        `;
+        list.innerHTML += card;
+      });
+    }
 
-  try {
-    await fetch(`${API_URL}/${id}`, {
-      method: "DELETE"
-    });
+    function filterServices(category) {
+      if (category === "All") {
+        displayServices(allServices);
+      } else {
+        const filtered = allServices.filter(s => s.category === category);
+        displayServices(filtered);
+      }
+    }
 
-  } catch (err) {
-    console.error("DELETE ERROR:", err);
-  }
-}
+    function editService(id) {
+      const service = allServices.find(s => s.id === id);
 
+      document.getElementById("name").value = service.name;
+      document.getElementById("price").value = service.price;
+      document.getElementById("category").value = service.category;
 
-// ================= EDIT =================
-function editService(id) {
-  const service = allServices.find(s => s.id === id);
+      window.editingId = id;
+    }
 
-  document.getElementById("name").value = service.name;
-  document.getElementById("price").value = service.price;
-  document.getElementById("category").value = service.category;
+    async function addService() {
+      const name = document.getElementById("name").value;
+      const price = document.getElementById("price").value;
+      const category = document.getElementById("category").value;
+      const file = document.getElementById("image").files[0];
 
-  window.editingId = id;
-}
+      let image = "";
 
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = async function () {
+          image = reader.result;
+          await saveService(name, price, category, image);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        await saveService(name, price, category, image);
+      }
+    }
 
-// ================= SEARCH =================
-function searchServices() {
-  const input = document.getElementById("searchInput").value.toLowerCase();
+    async function saveService(name, price, category, image) {
+      try {
+        if (window.editingId) {
+          await fetch(`${API_URL}/${window.editingId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, price, category, image })
+          });
+          window.editingId = null;
+        } else {
+          await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, price, category, image })
+          });
+        }
 
-  const filtered = allServices.filter(s =>
-    s.name.toLowerCase().includes(input) ||
-    s.category.toLowerCase().includes(input)
-  );
+        loadServices();
+      } catch (error) {
+        console.error("SAVE ERROR:", error);
+      }
+    }
 
-  displayServices(filtered);
-}
+    async function deleteService(id) {
+      try {
+        await fetch(`${API_URL}/${id}`, {
+          method: "DELETE"
+        });
+        loadServices();
+      } catch (error) {
+        console.error("DELETE ERROR:", error);
+      }
+    }
 
+    function searchServices() {
+      const input = document.getElementById("searchInput").value.toLowerCase();
 
-// INIT
-loadServices();
+      const filtered = allServices.filter(service =>
+        service.name.toLowerCase().includes(input) ||
+        service.category.toLowerCase().includes(input)
+      );
 
-</script>
+      displayServices(filtered);
+    }
+
+    loadServices();
+  </script>
 
 </body>
 </html>
