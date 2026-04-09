@@ -15,10 +15,14 @@ const PORT = process.env.PORT || 3000;
 const SERVICES_FILE = path.join(__dirname, "data.json");
 const USERS_FILE = path.join(__dirname, "users.json");
 
-const SECRET_KEY = "supersecretkey"; // later we secure this
+const SECRET_KEY = "supersecretkey";
 
 console.log("🚀 SERVER STARTED");
 
+// ================= ROOT =================
+app.get("/", (req, res) => {
+  res.send("TradeCircle API is running 🚀");
+});
 
 // ================= USERS =================
 
@@ -52,16 +56,19 @@ app.post("/signup", async (req, res) => {
     res.json({ message: "Signup successful ✅" });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Signup failed" });
   }
 });
 
-
 // LOGIN
 app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    if (!(await fs.pathExists(USERS_FILE))) {
+      return res.status(400).json({ error: "No users exist" });
+    }
 
+    const { email, password } = req.body;
     const users = await fs.readJson(USERS_FILE);
 
     const user = users.find(u => u.email === email);
@@ -74,17 +81,20 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Wrong password" });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY);
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      SECRET_KEY
+    );
 
     res.json({ token });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Login failed" });
   }
 });
 
-
-// ================= AUTH MIDDLEWARE =================
+// ================= AUTH =================
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
@@ -99,10 +109,9 @@ function authenticateToken(req, res, next) {
   });
 }
 
-
 // ================= SERVICES =================
 
-// GET services (public)
+// GET (public)
 app.get("/services", async (req, res) => {
   try {
     if (!(await fs.pathExists(SERVICES_FILE))) {
@@ -112,15 +121,19 @@ app.get("/services", async (req, res) => {
     const data = await fs.readJson(SERVICES_FILE);
     res.json(data);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to read data" });
   }
 });
 
-
-// POST service (protected)
+// POST (protected)
 app.post("/services", authenticateToken, async (req, res) => {
   try {
     const { name, price, category, image } = req.body;
+
+    if (!(await fs.pathExists(SERVICES_FILE))) {
+      await fs.writeJson(SERVICES_FILE, []);
+    }
 
     const data = await fs.readJson(SERVICES_FILE);
 
@@ -130,7 +143,7 @@ app.post("/services", authenticateToken, async (req, res) => {
       price,
       category,
       image,
-      userId: req.user.id // 🔥 attach owner
+      userId: req.user.id
     };
 
     data.push(newService);
@@ -138,30 +151,42 @@ app.post("/services", authenticateToken, async (req, res) => {
 
     res.json(newService);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to save" });
   }
 });
 
-
-// DELETE service (only owner)
+// DELETE (owner only)
 app.delete("/services/:id", authenticateToken, async (req, res) => {
-  const id = parseInt(req.params.id);
+  try {
+    const id = parseInt(req.params.id);
 
-  let data = await fs.readJson(SERVICES_FILE);
+    let data = await fs.readJson(SERVICES_FILE);
 
-  const service = data.find(s => s.id === id);
+    const service = data.find(s => s.id === id);
 
-  if (!service) {
-    return res.status(404).json({ error: "Service not found" });
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    if (service.userId !== req.user.id) {
+      return res.status(403).json({ error: "Not authorized ❌" });
+    }
+
+    data = data.filter(s => s.id !== id);
+
+    await fs.writeJson(SERVICES_FILE, data);
+
+    res.json({ message: "Deleted ✅" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Delete failed" });
   }
+});
 
-  if (service.userId !== req.user.id) {
-    return res.status(403).json({ error: "Not authorized ❌" });
-  }
+// ================= START SERVER =================
 
-  data = data.filter(s => s.id !== id);
-
-  await fs.writeJson(SERVICES_FILE, data);
-
-  res.json({ message: "Deleted ✅" });
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
