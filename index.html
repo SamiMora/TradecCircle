@@ -154,6 +154,11 @@
     <button onclick="filterServices('Photography')">Photography</button>
   </div>
 
+  <div style="margin: 20px;">
+  <button onclick="showAll()">🌍 All Services</button>
+  <button onclick="showMine()">👤 My Services</button>
+</div>
+
   <div class="container" id="serviceList"></div>
 
   <h2>Add Service</h2>
@@ -249,12 +254,14 @@ function logout() {
 
 // ================= SERVICES =================
 
+let viewMode = "all"; // "all" or "mine"
+
 async function loadServices() {
   try {
     let url = API_URL;
 
-    // ✅ Only load YOUR services when logged in
-    if (currentUser) {
+    // 👤 Only filter when viewing "My Services"
+    if (viewMode === "mine" && currentUser) {
       url += `?userId=${currentUser.id}`;
     }
 
@@ -275,7 +282,7 @@ function displayServices(services) {
 
   services.forEach(service => {
 
-    // ✅ ONLY show delete button if owner
+    // ✅ Only show delete button if owner
     const isOwner = currentUser && service.userId === currentUser.id;
 
     const card = `
@@ -291,6 +298,18 @@ function displayServices(services) {
 
     list.innerHTML += card;
   });
+}
+
+// 🌍 Show ALL services
+function showAll() {
+  viewMode = "all";
+  loadServices();
+}
+
+// 👤 Show ONLY my services
+function showMine() {
+  viewMode = "mine";
+  loadServices();
 }
 
 async function addService() {
@@ -345,12 +364,24 @@ async function saveService(name, price, category, image) {
 
 async function deleteService(id) {
   try {
-    await fetch(`${API_URL}/${id}`, {
+    if (!token) {
+      alert("Login required");
+      return;
+    }
+
+    const res = await fetch(`${API_URL}/${id}`, {
       method: "DELETE",
       headers: {
         "Authorization": `Bearer ${token}`
       }
     });
+
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
 
     loadServices();
 
@@ -358,6 +389,7 @@ async function deleteService(id) {
     console.error("DELETE ERROR:", err);
   }
 }
+
 
 // ================= FILTERS =================
 
