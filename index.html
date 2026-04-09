@@ -116,12 +116,29 @@
 
 <body>
 
-  <div class="logo-container">
-    <img src="tradecircle-logo.png" class="logo" />
-    <h1>
-      <span class="trade">Trade</span><span class="circle">Circle</span>
-    </h1>
-  </div>
+<div class="logo-container">
+  <img src="tradecircle-logo.png" class="logo" />
+  <h1>
+    <span class="trade">Trade</span><span class="circle">Circle</span>
+  </h1>
+</div>
+
+<!-- AUTH SECTION -->
+<div id="authSection">
+  <h2>Login / Signup</h2>
+
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+
+  <br>
+  <button onclick="signup()">Sign Up</button>
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- APP SECTION -->
+<div id="appSection" style="display:none;">
+
+  <button onclick="logout()">Logout</button>
 
   <input 
     type="text" 
@@ -142,132 +159,175 @@
   <h2>Add Service</h2>
   <input id="name" placeholder="Service name">
   <input id="price" placeholder="Price">
-  <input id="category" placeholder="Category (Hair, Auto, etc)">
+  <input id="category" placeholder="Category">
   <input type="file" id="image">
   <br>
   <button onclick="addService()">Add</button>
 
-  <script>
-    const API_URL = "https://tradeccircle-api.onrender.com/services";
-    let allServices = [];
+</div>
 
-    async function loadServices() {
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        allServices = data;
-        displayServices(allServices);
-      } catch (error) {
-        console.error("LOAD ERROR:", error);
-      }
-    }
+<script>
+const BASE_URL = "https://tradeccircle-api.onrender.com";
+const API_URL = BASE_URL + "/services";
 
-    function displayServices(services) {
-      const list = document.getElementById("serviceList");
-      list.innerHTML = "";
+let allServices = [];
 
-      services.forEach((service) => {
-        const card = `
-          <div class="card">
-            <img src="${service.image || 'tradecircle-logo.png'}" />
-            <h3>${service.name}</h3>
-            <p>$${service.price}</p>
-            <p>${service.category}</p>
+// ================= AUTH =================
 
-            <button onclick="deleteService(${service.id})">Delete ❌</button>
-            <button onclick="editService(${service.id})">Edit ✏️</button>
-          </div>
-        `;
-        list.innerHTML += card;
-      });
-    }
+function checkAuth() {
+  const token = localStorage.getItem("token");
 
-    function filterServices(category) {
-      if (category === "All") {
-        displayServices(allServices);
-      } else {
-        const filtered = allServices.filter(s => s.category === category);
-        displayServices(filtered);
-      }
-    }
+  if (token) {
+    document.getElementById("authSection").style.display = "none";
+    document.getElementById("appSection").style.display = "block";
+    loadServices();
+  } else {
+    document.getElementById("authSection").style.display = "block";
+    document.getElementById("appSection").style.display = "none";
+  }
+}
 
-    function editService(id) {
-      const service = allServices.find(s => s.id === id);
+async function signup() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-      document.getElementById("name").value = service.name;
-      document.getElementById("price").value = service.price;
-      document.getElementById("category").value = service.category;
+  const res = await fetch(BASE_URL + "/signup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
 
-      window.editingId = id;
-    }
+  const data = await res.json();
+  alert(data.message || data.error);
+}
 
-    async function addService() {
-      const name = document.getElementById("name").value;
-      const price = document.getElementById("price").value;
-      const category = document.getElementById("category").value;
-      const file = document.getElementById("image").files[0];
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-      let image = "";
+  const res = await fetch(BASE_URL + "/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
 
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = async function () {
-          image = reader.result;
-          await saveService(name, price, category, image);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        await saveService(name, price, category, image);
-      }
-    }
+  const data = await res.json();
 
-    async function saveService(name, price, category, image) {
-      try {
-        if (window.editingId) {
-          await fetch(`${API_URL}/${window.editingId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, price, category, image })
-          });
-          window.editingId = null;
-        } else {
-          await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, price, category, image })
-          });
-        }
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    checkAuth();
+  } else {
+    alert(data.error);
+  }
+}
 
-        loadServices();
-      } catch (error) {
-        console.error("SAVE ERROR:", error);
-      }
-    }
+function logout() {
+  localStorage.removeItem("token");
+  checkAuth();
+}
 
-    async function deleteService(id) {
-      try {
-        await fetch(`${API_URL}/${id}`, {
-          method: "DELETE"
-        });
-        loadServices();
-      } catch (error) {
-        console.error("DELETE ERROR:", error);
-      }
-    }
+// ================= SERVICES =================
 
-    function searchServices() {
-      const input = document.getElementById("searchInput").value.toLowerCase();
+async function loadServices() {
+  try {
+    const res = await fetch(API_URL);
+    allServices = await res.json();
+    displayServices(allServices);
+  } catch (err) {
+    console.error("LOAD ERROR:", err);
+  }
+}
 
-      const filtered = allServices.filter(service =>
-        service.name.toLowerCase().includes(input) ||
-        service.category.toLowerCase().includes(input)
-      );
+function displayServices(services) {
+  const list = document.getElementById("serviceList");
+  list.innerHTML = "";
 
-      displayServices(filtered);
-    }
+  services.forEach(service => {
+    const card = `
+      <div class="card">
+        <img src="${service.image || 'tradecircle-logo.png'}" />
+        <h3>${service.name}</h3>
+        <p>$${service.price}</p>
+        <p>${service.category}</p>
+
+        <button onclick="deleteService(${service.id})">Delete ❌</button>
+      </div>
+    `;
+    list.innerHTML += card;
+  });
+}
+
+async function addService() {
+  const name = document.getElementById("name").value;
+  const price = document.getElementById("price").value;
+  const category = document.getElementById("category").value;
+  const file = document.getElementById("image").files[0];
+
+  let image = "";
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = async function () {
+      image = reader.result;
+      await saveService(name, price, category, image);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await saveService(name, price, category, image);
+  }
+}
+
+async function saveService(name, price, category, image) {
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name, price, category, image })
+    });
 
     loadServices();
-  </script>
+  } catch (err) {
+    console.error("SAVE ERROR:", err);
+  }
+}
+
+async function deleteService(id) {
+  await fetch(`${API_URL}/${id}`, {
+    method: "DELETE"
+  });
+  loadServices();
+}
+
+function searchServices() {
+  const input = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = allServices.filter(service =>
+    service.name.toLowerCase().includes(input) ||
+    service.category.toLowerCase().includes(input)
+  );
+
+  displayServices(filtered);
+}
+
+function filterServices(category) {
+  if (category === "All") {
+    displayServices(allServices);
+  } else {
+    const filtered = allServices.filter(s => s.category === category);
+    displayServices(filtered);
+  }
+}
+
+// INIT
+checkAuth();
+
+</script>
 
 </body>
 </html>
