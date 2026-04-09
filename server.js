@@ -1,61 +1,111 @@
 const express = require("express");
+const cors = require("cors");
 const fs = require("fs-extra");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const path = require("path");
-
-console.log("🚀 SERVER STARTED");
 
 const app = express();
 
-// ✅ MANUAL CORS FIX (THIS IS THE KEY)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-
-  next();
-});
-
-// ✅ BODY LIMIT (for images)
+app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.urlencoded({ extended: true }));
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, "data.json");
+const SERVICES_FILE = path.join(__dirname, "data.json");
+const USERS_FILE = path.join(__dirname, "users.json");
 
-// ROOT
-app.get("/", (req, res) => {
-  res.send("TradeCircle API is running 🚀");
-});
+const SECRET_KEY = "supersecretkey"; // later we secure this
 
-// GET
-app.get("/services", async (req, res) => {
+console.log("🚀 SERVER STARTED");
+
+
+// ================= USERS =================
+
+// SIGNUP
+app.post("/signup", async (req, res) => {
   try {
-    if (!(await fs.pathExists(DATA_FILE))) {
-      await fs.writeJson(DATA_FILE, []);
+    const { email, password } = req.body;
+
+    if (!(await fs.pathExists(USERS_FILE))) {
+      await fs.writeJson(USERS_FILE, []);
     }
 
-    const data = await fs.readJson(DATA_FILE);
-    res.json(data);
+    const users = await fs.readJson(USERS_FILE);
+
+    const userExists = users.find(u => u.email === email);
+    if (userExists) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = {
+      id: Date.now(),
+      email,
+      password: hashedPassword
+    };
+
+    users.push(newUser);
+    await fs.writeJson(USERS_FILE, users);
+
+    res.json({ message: "Signup successful ✅" });
+
   } catch (err) {
-    console.error("READ ERROR:", err);
+    res.status(500).json({ error: "Signup failed" });
+  }
+});
+
+
+// LOGIN
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const users = await fs.readJson(USERS_FILE);
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Wrong password" });
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY);
+
+    res.json({ token });
+
+  } catch (err) {
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+
+// ================= SERVICES =================
+
+// GET services
+app.get("/services", async (req, res) => {
+  try {
+    if (!(await fs.pathExists(SERVICES_FILE))) {
+      await fs.writeJson(SERVICES_FILE, []);
+    }
+
+    const data = await fs.readJson(SERVICES_FILE);
+    res.json(data);
+  } catch (error) {
     res.status(500).json({ error: "Failed to read data" });
   }
 });
 
-// POST
+// POST service
 app.post("/services", async (req, res) => {
   try {
     const { name, price, category, image } = req.body;
 
-    if (!(await fs.pathExists(DATA_FILE))) {
-      await fs.writeJson(DATA_FILE, []);
-    }
-
-    const data = await fs.readJson(DATA_FILE);
+    const data = await fs.readJson(SERVICES_FILE);
 
     const newService = {
       id: Date.now(),
@@ -66,50 +116,11 @@ app.post("/services", async (req, res) => {
     };
 
     data.push(newService);
-    await fs.writeJson(DATA_FILE, data);
+    await fs.writeJson(SERVICES_FILE, data);
 
     res.json(newService);
-  } catch (err) {
-    console.error("SAVE ERROR:", err);
+  } catch (error) {
     res.status(500).json({ error: "Failed to save" });
-  }
-});
-
-// DELETE
-app.delete("/services/:id", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-
-    let data = await fs.readJson(DATA_FILE);
-    data = data.filter(s => s.id !== id);
-
-    await fs.writeJson(DATA_FILE, data);
-
-    res.json({ message: "Deleted" });
-  } catch (err) {
-    console.error("DELETE ERROR:", err);
-    res.status(500).json({ error: "Failed to delete" });
-  }
-});
-
-// PUT
-app.put("/services/:id", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const updated = req.body;
-
-    let data = await fs.readJson(DATA_FILE);
-
-    data = data.map(s =>
-      s.id === id ? { ...s, ...updated } : s
-    );
-
-    await fs.writeJson(DATA_FILE, data);
-
-    res.json({ message: "Updated" });
-  } catch (err) {
-    console.error("UPDATE ERROR:", err);
-    res.status(500).json({ error: "Failed to update" });
   }
 });
 
