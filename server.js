@@ -119,7 +119,18 @@ app.get("/services", async (req, res) => {
     }
 
     const data = await fs.readJson(SERVICES_FILE);
+
+    // 👇 check if user wants ONLY their services
+    const userId = req.query.userId;
+
+    if (userId) {
+      const filtered = data.filter(s => String(s.userId) === String(userId));
+      return res.json(filtered);
+    }
+
+    // default = all services
     res.json(data);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to read data" });
