@@ -84,9 +84,25 @@ app.post("/login", async (req, res) => {
 });
 
 
+// ================= AUTH MIDDLEWARE =================
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) return res.status(401).json({ error: "Access denied" });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ error: "Invalid token" });
+    req.user = user;
+    next();
+  });
+}
+
+
 // ================= SERVICES =================
 
-// GET services
+// GET services (public)
 app.get("/services", async (req, res) => {
   try {
     if (!(await fs.pathExists(SERVICES_FILE))) {
@@ -100,8 +116,9 @@ app.get("/services", async (req, res) => {
   }
 });
 
-// POST service
-app.post("/services", async (req, res) => {
+
+// POST service (protected)
+app.post("/services", authenticateToken, async (req, res) => {
   try {
     const { name, price, category, image } = req.body;
 
@@ -112,7 +129,8 @@ app.post("/services", async (req, res) => {
       name,
       price,
       category,
-      image
+      image,
+      userId: req.user.id // 🔥 attach owner
     };
 
     data.push(newService);
@@ -124,6 +142,26 @@ app.post("/services", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+
+// DELETE service (only owner)
+app.delete("/services/:id", authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+
+  let data = await fs.readJson(SERVICES_FILE);
+
+  const service = data.find(s => s.id === id);
+
+  if (!service) {
+    return res.status(404).json({ error: "Service not found" });
+  }
+
+  if (service.userId !== req.user.id) {
+    return res.status(403).json({ error: "Not authorized ❌" });
+  }
+
+  data = data.filter(s => s.id !== id);
+
+  await fs.writeJson(SERVICES_FILE, data);
+
+  res.json({ message: "Deleted ✅" });
 });
