@@ -283,10 +283,13 @@ async function addService() {
 
 async function saveService(name, price, category, image) {
   try {
+    const token = localStorage.getItem("token");
+
     await fetch(API_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
       },
       body: JSON.stringify({ name, price, category, image })
     });
@@ -298,9 +301,15 @@ async function saveService(name, price, category, image) {
 }
 
 async function deleteService(id) {
+  const token = localStorage.getItem("token");
+
   await fetch(`${API_URL}/${id}`, {
-    method: "DELETE"
+    method: "DELETE",
+    headers: {
+      "Authorization": "Bearer " + token
+    }
   });
+
   loadServices();
 }
 
