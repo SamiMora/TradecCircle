@@ -130,6 +130,13 @@
   <input id="email" autocomplete="email" placeholder="Email">
   <input id="password" type="password" autocomplete="current-password" placeholder="Password">
 
+  <!-- 🔥 ROLE DROPDOWN GOES RIGHT HERE -->
+  <br>
+  <select id="role">
+    <option value="customer">Customer</option>
+    <option value="business">Business</option>
+  </select>
+
   <br>
   <button onclick="signup()">Sign Up</button>
   <button onclick="login()">Login</button>
@@ -161,6 +168,7 @@
 
   <div class="container" id="serviceList"></div>
 
+  <div id="addServiceSection">
   <h2>Add Service</h2>
   <input id="name" placeholder="Service name">
   <input id="price" placeholder="Price">
@@ -168,7 +176,6 @@
   <input type="file" id="image">
   <br>
   <button onclick="addService()">Add</button>
-
 </div>
 
 <script>
@@ -199,21 +206,31 @@ function checkAuth() {
   if (token) {
     document.getElementById("authSection").style.display = "none";
     document.getElementById("appSection").style.display = "block";
+
+    // 🔥 CONTROL UI BASED ON ROLE
+    if (currentUser.role === "business") {
+      document.getElementById("addServiceSection").style.display = "block";
+    } else {
+      document.getElementById("addServiceSection").style.display = "none";
+    }
+
     loadServices();
   } else {
     document.getElementById("authSection").style.display = "block";
     document.getElementById("appSection").style.display = "none";
   }
 }
-
 async function signup() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
+  const role = document.getElementById("role").value;
 
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ email, password })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password, role })
   });
 
   const data = await res.json();

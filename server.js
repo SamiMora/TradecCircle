@@ -29,7 +29,11 @@ app.get("/", (req, res) => {
 // SIGNUP
 app.post("/signup", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
+
+    if (!role || (role !== "business" && role !== "customer")) {
+      return res.status(400).json({ error: "Invalid role" });
+    }
 
     if (!(await fs.pathExists(USERS_FILE))) {
       await fs.writeJson(USERS_FILE, []);
@@ -47,7 +51,8 @@ app.post("/signup", async (req, res) => {
     const newUser = {
       id: Date.now(),
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role // ✅ NEW
     };
 
     users.push(newUser);
@@ -56,7 +61,6 @@ app.post("/signup", async (req, res) => {
     res.json({ message: "Signup successful ✅" });
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Signup failed" });
   }
 });
@@ -81,10 +85,11 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Wrong password" });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      SECRET_KEY
-    );
+const token = jwt.sign(
+  { id: user.id, email: user.email, role: user.role },
+  SECRET_KEY,
+  { expiresIn: "7d" } 
+);
 
     res.json({ token });
 
@@ -137,16 +142,21 @@ app.get("/services", async (req, res) => {
   }
 });
 
-// POST (protected)
+// POST service (business only)
 app.post("/services", authenticateToken, async (req, res) => {
   try {
-    const { name, price, category, image } = req.body;
+
+    if (req.user.role !== "business") {
+      return res.status(403).json({ error: "Only businesses can post services" });
+    }
 
     if (!(await fs.pathExists(SERVICES_FILE))) {
       await fs.writeJson(SERVICES_FILE, []);
     }
 
     const data = await fs.readJson(SERVICES_FILE);
+
+    const { name, price, category, image } = req.body;
 
     const newService = {
       id: Date.now(),
@@ -161,6 +171,7 @@ app.post("/services", authenticateToken, async (req, res) => {
     await fs.writeJson(SERVICES_FILE, data);
 
     res.json(newService);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to save" });
@@ -170,6 +181,11 @@ app.post("/services", authenticateToken, async (req, res) => {
 // DELETE (owner only)
 app.delete("/services/:id", authenticateToken, async (req, res) => {
   try {
+        // ✅ SAFETY CHECK GOES RIGHT HERE
+    if (!(await fs.pathExists(SERVICES_FILE))) {
+      return res.status(404).json({ error: "No data file found" });
+    }
+
     const id = parseInt(req.params.id);
 
     let data = await fs.readJson(SERVICES_FILE);
