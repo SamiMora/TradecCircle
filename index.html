@@ -168,7 +168,7 @@
 
   <div class="container" id="serviceList"></div>
 
-  <div id="addServiceSection">
+  <div id="addServiceSection" style="display:none;">
   <h2>Add Service</h2>
   <input id="name" placeholder="Service name">
   <input id="price" placeholder="Price">
@@ -203,7 +203,7 @@ function checkAuth() {
   token = localStorage.getItem("token");
   currentUser = decodeUser();
 
-  if (token) {
+  if (token && currentUser) {
     document.getElementById("authSection").style.display = "none";
     document.getElementById("appSection").style.display = "block";
 
@@ -214,12 +214,15 @@ function checkAuth() {
       document.getElementById("addServiceSection").style.display = "none";
     }
 
+    // ✅ LOAD SERVICES AFTER LOGIN
     loadServices();
+
   } else {
     document.getElementById("authSection").style.display = "block";
     document.getElementById("appSection").style.display = "none";
   }
 }
+
 async function signup() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
