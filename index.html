@@ -435,6 +435,32 @@ async function saveService(name, price, category, image) {
   loadAllData();
 }
 
+// EDIT SERVICE
+window.editService = function(id) {
+  const service = allServices.find(s => s.id === id);
+
+  if (!service) {
+    alert("Service not found");
+    return;
+  }
+
+  // Fill form with existing data
+  document.getElementById("name").value = service.name;
+  document.getElementById("price").value = service.price;
+  document.getElementById("category").value = service.category;
+
+  // Set edit mode
+  editingServiceId = id;
+
+  // Change button text
+  document.querySelector("#addServiceSection button").innerText = "Update Service ✏️";
+
+  // Scroll user to form (nice UX touch)
+  document.getElementById("addServiceSection").scrollIntoView({
+    behavior: "smooth"
+  });
+};
+
 async function handleSave(name, price, category, image) {
   let res;
 
