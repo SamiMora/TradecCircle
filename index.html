@@ -7,7 +7,15 @@
     body {
       font-family: Arial;
       background: linear-gradient(to bottom, #ffffff, #f8fafc);
+      color: #0f172a;
       text-align: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5em;
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .container {
@@ -26,40 +34,65 @@
       cursor: pointer;
     }
 
-    button {
-      margin-top: 10px;
-      padding: 8px;
-      border: none;
-      border-radius: 6px;
-      background: orange;
-      color: white;
-      cursor: pointer;
+    img {
+      width: 100%;
+      border-radius: 10px;
     }
 
     input, select {
-      padding: 8px;
       margin: 5px;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
     }
+
+    button {
+      padding: 10px;
+      background: #f97316;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #ea580c;
+    }
+
+    #filters button {
+      background: #0ea5e9;
+    }
+
+    #searchInput {
+      width: 250px;
+      border: 1px solid #ccc;
+    }
+
+    .logo {
+      width: 100px;
+    }
+
+    .trade { color: #f97316; }
+    .circle { color: #0ea5e9; }
   </style>
 </head>
 
 <body>
 
-<h1>🌌 TradeCircle</h1>
+<img src="tradecircle-logo.png" class="logo" />
+<h1><span class="trade">Trade</span><span class="circle">Circle</span></h1>
 
 <!-- AUTH -->
 <div id="authSection">
   <h2>Login / Signup</h2>
-
   <input id="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
-
   <br>
   <select id="role">
     <option value="customer">Customer</option>
     <option value="business">Business</option>
   </select>
-
   <br>
   <button onclick="signup()">Sign Up</button>
   <button onclick="login()">Login</button>
@@ -67,12 +100,25 @@
 
 <!-- APP -->
 <div id="appSection" style="display:none;">
-
   <button onclick="logout()">Logout</button>
 
-  <h2>Services</h2>
+  <input id="searchInput" placeholder="Search..." onkeyup="searchServices()"/>
+
+  <div id="filters">
+    <button onclick="filterServices('All')">All</button>
+    <button onclick="filterServices('Hair')">Hair</button>
+    <button onclick="filterServices('Auto')">Auto</button>
+  </div>
 
   <div class="container" id="serviceList"></div>
+
+  <!-- BUSINESS PROFILE DISPLAY -->
+  <div id="profileView" style="display:none;">
+    <h2 id="profileName"></h2>
+    <p id="profileDesc"></p>
+    <p id="profileContact"></p>
+    <button onclick="closeProfile()">Back</button>
+  </div>
 
   <!-- ADD SERVICE -->
   <div id="addServiceSection" style="display:none;">
@@ -80,6 +126,7 @@
     <input id="name" placeholder="Service name">
     <input id="price" placeholder="Price">
     <input id="category" placeholder="Category">
+    <input type="file" id="image">
     <button onclick="addService()">Add</button>
   </div>
 
@@ -89,84 +136,121 @@
     <input id="bizName" placeholder="Business Name">
     <input id="bizContact" placeholder="Contact">
     <input id="bizDescription" placeholder="Description">
-    <button onclick="saveBusinessProfile()">Save Profile</button>
+    <button onclick="saveBusinessProfile()">Save</button>
   </div>
-
 </div>
 
 <script>
 const BASE_URL = "https://tradeccircle-api.onrender.com";
-const API_URL = BASE_URL + "/services";
 
 let token = localStorage.getItem("token");
 let currentUser = null;
 let allServices = [];
+let businesses = [];
 
-// Decode JWT
+// Decode user
 function decodeUser() {
-  try {
-    return token ? JSON.parse(atob(token.split(".")[1])) : null;
-  } catch {
-    return null;
-  }
+  if (!token) return null;
+  return JSON.parse(atob(token.split(".")[1]));
 }
 
-// ================= AUTH =================
-
+// AUTH CHECK
 function checkAuth() {
-  token = localStorage.getItem("token");
-  currentUser = decodeUser();
-
   const authSection = document.getElementById("authSection");
   const appSection = document.getElementById("appSection");
-  const addServiceSection = document.getElementById("addServiceSection");
-  const businessProfileSection = document.getElementById("businessProfileSection");
+
+  token = localStorage.getItem("token");
+  currentUser = decodeUser();
 
   if (token && currentUser) {
     authSection.style.display = "none";
     appSection.style.display = "block";
 
     if (currentUser.role === "business") {
-      addServiceSection.style.display = "block";
-      businessProfileSection.style.display = "block";
-    } else {
-      addServiceSection.style.display = "none";
-      businessProfileSection.style.display = "none";
+      document.getElementById("addServiceSection").style.display = "block";
+      document.getElementById("businessProfileSection").style.display = "block";
     }
 
-    loadServices();
-
+    loadAll();
   } else {
     authSection.style.display = "block";
     appSection.style.display = "none";
   }
 }
 
-// SIGNUP
+// LOAD EVERYTHING
+async function loadAll() {
+  const s = await fetch(BASE_URL + "/services");
+  allServices = await s.json();
+
+  const b = await fetch(BASE_URL + "/business-profiles");
+  businesses = await b.json();
+
+  displayServices(allServices);
+}
+
+// DISPLAY SERVICES
+function displayServices(services) {
+  const list = document.getElementById("serviceList");
+  list.innerHTML = "";
+
+  services.forEach(service => {
+    const biz = businesses.find(b => b.userId === service.userId);
+
+    list.innerHTML += `
+      <div class="card" onclick="openProfile(${service.userId})">
+        <img src="${service.image || 'tradecircle-logo.png'}"/>
+        <h3>${service.name}</h3>
+        <p>$${service.price}</p>
+        <p>${service.category}</p>
+        <p><b>${biz ? biz.name : "Unknown Business"}</b></p>
+      </div>
+    `;
+  });
+}
+
+// OPEN PROFILE
+function openProfile(userId) {
+  const biz = businesses.find(b => b.userId === userId);
+  if (!biz) return;
+
+  document.getElementById("profileView").style.display = "block";
+  document.getElementById("serviceList").style.display = "none";
+
+  document.getElementById("profileName").innerText = biz.name;
+  document.getElementById("profileDesc").innerText = biz.description;
+  document.getElementById("profileContact").innerText = biz.contact;
+}
+
+function closeProfile() {
+  document.getElementById("profileView").style.display = "none";
+  document.getElementById("serviceList").style.display = "flex";
+}
+
+// AUTH
 async function signup() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const role = document.getElementById("role").value;
+
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      email: document.getElementById("email").value,
-      password: document.getElementById("password").value,
-      role: document.getElementById("role").value
-    })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({email,password,role})
   });
 
   const data = await res.json();
   alert(data.message || data.error);
 }
 
-// LOGIN
 async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
   const res = await fetch(BASE_URL + "/login", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      email: document.getElementById("email").value,
-      password: document.getElementById("password").value
-    })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({email,password})
   });
 
   const data = await res.json();
@@ -174,129 +258,66 @@ async function login() {
   if (data.token) {
     localStorage.setItem("token", data.token);
     checkAuth();
-  } else {
-    alert(data.error);
   }
 }
 
-// LOGOUT
 function logout() {
   localStorage.removeItem("token");
   checkAuth();
 }
 
-// ================= BUSINESS =================
-
-async function saveBusinessProfile() {
-  await fetch(BASE_URL + "/business-profile", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      name: document.getElementById("bizName").value,
-      contact: document.getElementById("bizContact").value,
-      description: document.getElementById("bizDescription").value
-    })
-  });
-
-  alert("Profile saved ✅");
-}
-
-// ================= SERVICES =================
-
-async function loadServices() {
-  const res = await fetch(API_URL);
-  allServices = await res.json();
-  displayServices(allServices);
-}
-
-async function displayServices(services) {
-  const serviceList = document.getElementById("serviceList");
-
-  const res = await fetch(BASE_URL + "/business-profiles");
-  const businesses = await res.json();
-
-  serviceList.innerHTML = "";
-
-  services.forEach(s => {
-    const biz = businesses.find(b => b.userId === s.userId);
-
-    serviceList.innerHTML += `
-      <div class="card" onclick="openBusiness(${s.userId})">
-        <h3>${s.name}</h3>
-        <p>$${s.price}</p>
-        <p>${s.category}</p>
-        <p>⭐ ${s.rating || 5}</p>
-        <p><b>${biz ? biz.name : "Unknown Business"}</b></p>
-
-        ${currentUser && currentUser.id === s.userId ? `
-          <button onclick="event.stopPropagation(); editService(${s.id})">Edit</button>
-          <button onclick="event.stopPropagation(); deleteService(${s.id})">Delete</button>
-        ` : ""}
-      </div>
-    `;
-  });
-}
-
-// ADD
+// ADD SERVICE
 async function addService() {
-  await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
+  const name = document.getElementById("name").value;
+  const price = document.getElementById("price").value;
+  const category = document.getElementById("category").value;
+
+  await fetch(BASE_URL + "/services", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+token
     },
-    body: JSON.stringify({
-      name: document.getElementById("name").value,
-      price: document.getElementById("price").value,
-      category: document.getElementById("category").value
-    })
+    body: JSON.stringify({name,price,category})
   });
 
-  loadServices();
+  loadAll();
 }
 
-// EDIT
-async function editService(id) {
-  const name = prompt("New name:");
-  const price = prompt("New price:");
+// SAVE PROFILE
+async function saveBusinessProfile() {
+  const name = document.getElementById("bizName").value;
+  const contact = document.getElementById("bizContact").value;
+  const description = document.getElementById("bizDescription").value;
 
-  await fetch(API_URL + "/" + id, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
+  await fetch(BASE_URL + "/business-profile", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+token
     },
-    body: JSON.stringify({ name, price })
+    body: JSON.stringify({name,contact,description})
   });
 
-  loadServices();
+  loadAll();
 }
 
-// DELETE
-async function deleteService(id) {
-  await fetch(API_URL + "/" + id, {
-    method: "DELETE",
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
-  });
+// SEARCH
+function searchServices() {
+  const input = document.getElementById("searchInput").value.toLowerCase();
 
-  loadServices();
+  const filtered = allServices.filter(s =>
+    s.name.toLowerCase().includes(input) ||
+    s.category.toLowerCase().includes(input)
+  );
+
+  displayServices(filtered);
 }
 
-// VIEW BUSINESS
-function openBusiness(userId) {
-  fetch(BASE_URL + "/business-profiles")
-    .then(res => res.json())
-    .then(data => {
-      const b = data.find(x => x.userId === userId);
-      if (b) {
-        alert(`🏪 ${b.name}\n📞 ${b.contact}\n📝 ${b.description}`);
-      }
-    });
+// FILTER
+function filterServices(category) {
+  if (category === "All") return displayServices(allServices);
+  displayServices(allServices.filter(s => s.category === category));
 }
 
 // INIT
