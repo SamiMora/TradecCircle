@@ -162,6 +162,21 @@
     <button onclick="saveBusinessProfile()">Save Profile</button>
   </div>
 
+  <!-- Business View Section-->
+<div id="businessView" style="display:none; padding:20px;">
+  <button onclick="closeBusinessView()">⬅ Back</button>
+
+  <h2 id="bizTitle"></h2>
+  <img id="bizImg" style="width:200px; border-radius:10px;" />
+
+  <p id="bizDesc"></p>
+  <p id="bizContact"></p>
+  <p>⭐ 4.5 Rating (coming soon)</p>
+
+  <h3>Services</h3>
+  <div class="container" id="bizServices"></div>
+</div>
+
 </div>
 
 <script>
@@ -330,7 +345,40 @@ function viewBusiness(userId) {
   const business = allBusinesses.find(b => b.userId === userId);
   if (!business) return alert("No business profile");
 
-  alert(`${business.name}\n\n${business.description}\n\nContact: ${business.contact}`);
+  // Hide main list
+  document.getElementById("serviceList").style.display = "none";
+
+  // Show business view
+  document.getElementById("businessView").style.display = "block";
+
+  // Fill data
+  document.getElementById("bizTitle").innerText = business.name;
+  document.getElementById("bizDesc").innerText = business.description;
+  document.getElementById("bizContact").innerText = "Contact: " + business.contact;
+  document.getElementById("bizImg").src = business.image || "tradecircle-logo.png";
+
+  // Load that business's services
+  const bizServices = allServices.filter(s => s.userId === userId);
+
+  const container = document.getElementById("bizServices");
+  container.innerHTML = "";
+
+  bizServices.forEach(service => {
+    container.innerHTML += `
+      <div class="card">
+        <img src="${service.image || 'tradecircle-logo.png'}" />
+        <h3>${service.name}</h3>
+        <p>$${service.price}</p>
+        <p>${service.category}</p>
+      </div>
+    `;
+  });
+}
+
+// Back Button Close Business View
+function closeBusinessView() {
+  document.getElementById("businessView").style.display = "none";
+  document.getElementById("serviceList").style.display = "flex";
 }
 
 // VIEW TOGGLES
