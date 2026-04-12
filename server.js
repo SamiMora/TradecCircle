@@ -120,16 +120,18 @@ function authenticateToken(req, res, next) {
 // CREATE or UPDATE business profile
 app.post("/business-profile", authenticateToken, async (req, res) => {
   try {
-
     console.log("BODY:", req.body);
-console.log("USER:", req.user);
+    console.log("USER:", req.user);
 
-
-    if (req.user.role !== "business") {
+    if (!req.user || req.user.role !== "business") {
       return res.status(403).json({ error: "Only businesses allowed" });
     }
 
     const { name, description, contact, image } = req.body;
+
+    if (!name || !contact || !description) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     if (!(await fs.pathExists(BUSINESSES_FILE))) {
       await fs.writeJson(BUSINESSES_FILE, []);
@@ -137,27 +139,22 @@ console.log("USER:", req.user);
 
     let businesses = await fs.readJson(BUSINESSES_FILE);
 
-    // Check if profile exists
     const existing = businesses.find(b => b.userId === req.user.id);
 
     if (existing) {
-      // UPDATE
       businesses = businesses.map(b =>
         b.userId === req.user.id
           ? { ...b, name, description, contact, image }
           : b
       );
     } else {
-      // CREATE
-      const newBusiness = {
+      businesses.push({
         userId: req.user.id,
         name,
         description,
         contact,
         image
-      };
-
-      businesses.push(newBusiness);
+      });
     }
 
     await fs.writeJson(BUSINESSES_FILE, businesses);
@@ -165,7 +162,7 @@ console.log("USER:", req.user);
     res.json({ message: "Profile saved ✅" });
 
   } catch (err) {
-    console.error(err);
+    console.error("PROFILE ERROR:", err);
     res.status(500).json({ error: "Profile failed" });
   }
 });
