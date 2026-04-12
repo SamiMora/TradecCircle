@@ -185,6 +185,7 @@ const API_URL = BASE_URL + "/services";
 
 let allServices = [];
 let allBusinesses = [];
+let editingServiceId = null;
 let currentUser = null;
 let token = localStorage.getItem("token");
 
@@ -334,7 +335,10 @@ function displayServices(services) {
         <p>$${service.price}</p>
         <p>${service.category}</p>
         <p><strong>${business ? business.name : "Unknown Business"}</strong></p>
-        ${isOwner ? `<button onclick="event.stopPropagation(); deleteService(${service.id})">Delete ❌</button>` : ""}
+        ${isOwner ? `
+  <button onclick="event.stopPropagation(); editService(${service.id})">Edit ✏️</button>
+  <button onclick="event.stopPropagation(); deleteService(${service.id})">Delete ❌</button>
+` : ""}
       </div>
     `;
   });
@@ -403,11 +407,11 @@ async function addService() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       imageData = reader.result;
-      await saveService(name, price, category, imageData);
+      await handleSave(name, price, category, imageData);
     };
     reader.readAsDataURL(file);
   } else {
-    await saveService(name, price, category, imageData);
+    await handleSave(name, price, category, imageData);
   }
 }
 
@@ -427,6 +431,50 @@ async function saveService(name, price, category, image) {
     alert(data.error);
     return;
   }
+
+  loadAllData();
+}
+
+async function handleSave(name, price, category, image) {
+  let res;
+
+  if (editingServiceId) {
+    // UPDATE
+    res = await fetch(`${API_URL}/${editingServiceId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ name, price, category, image })
+    });
+
+    editingServiceId = null;
+
+    document.querySelector("#addServiceSection button").innerText = "Add";
+  } else {
+    // CREATE
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ name, price, category, image })
+    });
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  // Clear form
+  document.getElementById("name").value = "";
+  document.getElementById("price").value = "";
+  document.getElementById("category").value = "";
 
   loadAllData();
 }
