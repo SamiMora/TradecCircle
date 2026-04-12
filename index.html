@@ -162,15 +162,30 @@ function checkAuth() {
   token = localStorage.getItem("token");
   currentUser = decodeUser();
 
-  authSection.style.display = token ? "none" : "block";
-  appSection.style.display = token ? "block" : "none";
+  const authSection = document.getElementById("authSection");
+  const appSection = document.getElementById("appSection");
+  const addServiceSection = document.getElementById("addServiceSection");
+  const businessProfileSection = document.getElementById("businessProfileSection");
 
-  if (currentUser?.role === "business") {
-    addServiceSection.style.display = "block";
-    businessProfileSection.style.display = "block";
+  if (token && currentUser) {
+    authSection.style.display = "none";
+    appSection.style.display = "block";
+
+    // 🔒 ALWAYS hide first (prevents leaks)
+    addServiceSection.style.display = "none";
+    businessProfileSection.style.display = "none";
+
+    // ✅ ONLY show for business accounts
+    if (currentUser.role === "business") {
+      addServiceSection.style.display = "block";
+      businessProfileSection.style.display = "block";
+    }
+
+    loadServices();
+  } else {
+    authSection.style.display = "block";
+    appSection.style.display = "none";
   }
-
-  loadServices();
 }
 
 async function signup() {
@@ -321,4 +336,3 @@ function openBusiness(userId) {
 checkAuth();
 </script>
 </body>
-</html>
