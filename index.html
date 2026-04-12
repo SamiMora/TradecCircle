@@ -37,7 +37,7 @@
       border-radius: 10px;
     }
 
-    input {
+    input, select {
       margin: 5px;
       padding: 10px;
       border-radius: 5px;
@@ -51,10 +51,12 @@
       border-radius: 6px;
       color: white;
       cursor: pointer;
+      margin-top: 10px;
     }
 
     button:hover {
       background: #ea580c;
+      opacity: 0.9;
     }
 
     #filters {
@@ -62,13 +64,7 @@
     }
 
     #filters button {
-      margin: 5px;
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
       background: #0ea5e9;
-      color: white;
-      cursor: pointer;
     }
 
     #filters button:hover {
@@ -76,10 +72,7 @@
     }
 
     #searchInput {
-      padding: 10px;
       width: 250px;
-      margin: 10px;
-      border-radius: 6px;
       border: 1px solid #ccc;
     }
 
@@ -92,25 +85,8 @@
       margin-bottom: 10px;
     }
 
-    .trade {
-      color: #f97316;
-    }
-
-    .circle {
-      color: #0ea5e9;
-    }
-
-    button {
-      margin-top: 10px;
-      padding: 8px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      opacity: 0.8;
-    }
+    .trade { color: #f97316; }
+    .circle { color: #0ea5e9; }
   </style>
 </head>
 
@@ -123,14 +99,13 @@
   </h1>
 </div>
 
-<!-- AUTH SECTION -->
+<!-- AUTH -->
 <div id="authSection">
   <h2>Login / Signup</h2>
 
-  <input id="email" autocomplete="email" placeholder="Email">
-  <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
 
-  <!-- 🔥 ROLE DROPDOWN GOES RIGHT HERE -->
   <br>
   <select id="role">
     <option value="customer">Customer</option>
@@ -142,17 +117,12 @@
   <button onclick="login()">Login</button>
 </div>
 
-<!-- APP SECTION -->
+<!-- APP -->
 <div id="appSection" style="display:none;">
 
   <button onclick="logout()">Logout</button>
 
-  <input 
-    type="text" 
-    id="searchInput" 
-    placeholder="Search services..." 
-    onkeyup="searchServices()"
-  />
+  <input id="searchInput" placeholder="Search services..." onkeyup="searchServices()" />
 
   <div id="filters">
     <button onclick="filterServices('All')">All</button>
@@ -161,21 +131,35 @@
     <button onclick="filterServices('Photography')">Photography</button>
   </div>
 
-  <div style="margin: 20px;">
-  <button onclick="showAll()">🌍 All Services</button>
-  <button onclick="showMine()">👤 My Services</button>
-</div>
+  <div>
+    <button onclick="showAll()">🌍 All Services</button>
+    <button onclick="showMine()">👤 My Services</button>
+  </div>
 
   <div class="container" id="serviceList"></div>
 
+  <!-- ADD SERVICE -->
   <div id="addServiceSection" style="display:none;">
-  <h2>Add Service</h2>
-  <input id="name" placeholder="Service name">
-  <input id="price" placeholder="Price">
-  <input id="category" placeholder="Category">
-  <input type="file" id="image">
-  <br>
-  <button onclick="addService()">Add</button>
+    <h2>Add Service</h2>
+    <input id="name" placeholder="Service name">
+    <input id="price" placeholder="Price">
+    <input id="category" placeholder="Category">
+    <input type="file" id="image">
+    <br>
+    <button onclick="addService()">Add</button>
+  </div>
+
+  <!-- BUSINESS PROFILE -->
+  <div id="businessProfileSection" style="display:none;">
+    <h2>Business Profile</h2>
+    <input id="bizName" placeholder="Business Name">
+    <input id="bizContact" placeholder="Contact Info">
+    <input id="bizDescription" placeholder="Description">
+    <input type="file" id="bizImage">
+    <br>
+    <button onclick="saveBusinessProfile()">Save Profile</button>
+  </div>
+
 </div>
 
 <script>
@@ -186,10 +170,9 @@ let allServices = [];
 let currentUser = null;
 let token = localStorage.getItem("token");
 
-// ✅ Decode user safely
+// Decode JWT
 function decodeUser() {
   if (!token) return null;
-
   try {
     return JSON.parse(atob(token.split(".")[1]));
   } catch {
@@ -197,8 +180,7 @@ function decodeUser() {
   }
 }
 
-// ================= AUTH =================
-
+// AUTH CHECK
 function checkAuth() {
   token = localStorage.getItem("token");
   currentUser = decodeUser();
@@ -207,32 +189,30 @@ function checkAuth() {
     document.getElementById("authSection").style.display = "none";
     document.getElementById("appSection").style.display = "block";
 
-    // 🔥 CONTROL UI BASED ON ROLE
     if (currentUser.role === "business") {
       document.getElementById("addServiceSection").style.display = "block";
+      document.getElementById("businessProfileSection").style.display = "block";
     } else {
       document.getElementById("addServiceSection").style.display = "none";
+      document.getElementById("businessProfileSection").style.display = "none";
     }
 
-    // ✅ LOAD SERVICES AFTER LOGIN
     loadServices();
-
   } else {
     document.getElementById("authSection").style.display = "block";
     document.getElementById("appSection").style.display = "none";
   }
 }
 
+// SIGNUP
 async function signup() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const role = document.getElementById("role").value;
+  const email = emailInput.value;
+  const password = passwordInput.value;
+  const role = role.value;
 
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ email, password, role })
   });
 
@@ -240,9 +220,10 @@ async function signup() {
   alert(data.message || data.error);
 }
 
+// LOGIN
 async function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = emailInput.value;
+  const password = passwordInput.value;
 
   const res = await fetch(BASE_URL + "/login", {
     method: "POST",
@@ -254,17 +235,15 @@ async function login() {
 
   if (data.token) {
     localStorage.setItem("token", data.token);
-
-    // ✅ CRITICAL FIX
     token = data.token;
     currentUser = decodeUser();
-
     checkAuth();
   } else {
     alert(data.error);
   }
 }
 
+// LOGOUT
 function logout() {
   localStorage.removeItem("token");
   token = null;
@@ -272,71 +251,12 @@ function logout() {
   checkAuth();
 }
 
-// ================= SERVICES =================
-
-let viewMode = "all"; // "all" or "mine"
-
-async function loadServices() {
-  try {
-    let url = API_URL;
-
-    // 👤 Only filter when viewing "My Services"
-    if (viewMode === "mine" && currentUser) {
-      url += `?userId=${currentUser.id}`;
-    }
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    allServices = data;
-    displayServices(data);
-
-  } catch (err) {
-    console.error("LOAD ERROR:", err);
-  }
-}
-
-function displayServices(services) {
-  const list = document.getElementById("serviceList");
-  list.innerHTML = "";
-
-  services.forEach(service => {
-
-    // ✅ Only show delete button if owner
-    const isOwner = currentUser && service.userId === currentUser.id;
-
-    const card = `
-      <div class="card">
-        <img src="${service.image || 'tradecircle-logo.png'}" />
-        <h3>${service.name}</h3>
-        <p>$${service.price}</p>
-        <p>${service.category}</p>
-
-        ${isOwner ? `<button onclick="deleteService(${service.id})">Delete ❌</button>` : ""}
-      </div>
-    `;
-
-    list.innerHTML += card;
-  });
-}
-
-// 🌍 Show ALL services
-function showAll() {
-  viewMode = "all";
-  loadServices();
-}
-
-// 👤 Show ONLY my services
-function showMine() {
-  viewMode = "mine";
-  loadServices();
-}
-
-async function addService() {
-  const name = document.getElementById("name").value;
-  const price = document.getElementById("price").value;
-  const category = document.getElementById("category").value;
-  const file = document.getElementById("image").files[0];
+// BUSINESS PROFILE
+async function saveBusinessProfile() {
+  const name = bizName.value;
+  const contact = bizContact.value;
+  const description = bizDescription.value;
+  const file = bizImage.files[0];
 
   let image = "";
 
@@ -344,77 +264,134 @@ async function addService() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       image = reader.result;
-      await saveService(name, price, category, image);
+      await sendProfile(name, contact, description, image);
     };
     reader.readAsDataURL(file);
   } else {
-    await saveService(name, price, category, image);
+    await sendProfile(name, contact, description, image);
+  }
+}
+
+async function sendProfile(name, contact, description, image) {
+  const res = await fetch(BASE_URL + "/business-profile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ name, contact, description, image })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+}
+
+// SERVICES
+let viewMode = "all";
+
+async function loadServices() {
+  let url = API_URL;
+
+  if (viewMode === "mine" && currentUser) {
+    url += `?userId=${currentUser.id}`;
+  }
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  allServices = data;
+  displayServices(data);
+}
+
+function displayServices(services) {
+  serviceList.innerHTML = "";
+
+  services.forEach(service => {
+    const isOwner = currentUser && service.userId === currentUser.id;
+
+    serviceList.innerHTML += `
+      <div class="card">
+        <img src="${service.image || 'tradecircle-logo.png'}" />
+        <h3>${service.name}</h3>
+        <p>$${service.price}</p>
+        <p>${service.category}</p>
+        ${isOwner ? `<button onclick="deleteService(${service.id})">Delete ❌</button>` : ""}
+      </div>
+    `;
+  });
+}
+
+function showAll() {
+  viewMode = "all";
+  loadServices();
+}
+
+function showMine() {
+  viewMode = "mine";
+  loadServices();
+}
+
+async function addService() {
+  const name = nameInput.value;
+  const price = priceInput.value;
+  const category = categoryInput.value;
+  const file = image.files[0];
+
+  let imageData = "";
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      imageData = reader.result;
+      await saveService(name, price, category, imageData);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await saveService(name, price, category, imageData);
   }
 }
 
 async function saveService(name, price, category, image) {
-  try {
-    if (!token) {
-      alert("You must be logged in!");
-      return;
-    }
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ name, price, category, image })
+  });
 
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ name, price, category, image })
-    });
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.error) {
-      alert(data.error);
-      return;
-    }
-
-    loadServices();
-
-  } catch (err) {
-    console.error("SAVE ERROR:", err);
+  if (data.error) {
+    alert(data.error);
+    return;
   }
+
+  loadServices();
 }
 
 async function deleteService(id) {
-  try {
-    if (!token) {
-      alert("Login required");
-      return;
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`
     }
+  });
 
-    const res = await fetch(`${API_URL}/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if (data.error) {
-      alert(data.error);
-      return;
-    }
-
-    loadServices();
-
-  } catch (err) {
-    console.error("DELETE ERROR:", err);
+  if (data.error) {
+    alert(data.error);
+    return;
   }
+
+  loadServices();
 }
 
-
-// ================= FILTERS =================
-
+// FILTERS
 function searchServices() {
-  const input = document.getElementById("searchInput").value.toLowerCase();
+  const input = searchInput.value.toLowerCase();
 
   const filtered = allServices.filter(service =>
     service.name.toLowerCase().includes(input) ||
@@ -428,13 +405,13 @@ function filterServices(category) {
   if (category === "All") {
     displayServices(allServices);
   } else {
-    const filtered = allServices.filter(s => s.category === category);
-    displayServices(filtered);
+    displayServices(allServices.filter(s => s.category === category));
   }
 }
 
 // INIT
 checkAuth();
 </script>
+
 </body>
 </html>

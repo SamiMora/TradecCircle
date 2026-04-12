@@ -14,6 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 3000;
 const SERVICES_FILE = path.join(__dirname, "data.json");
 const USERS_FILE = path.join(__dirname, "users.json");
+const BUSINESSES_FILE = path.join(__dirname, "businesses.json");
 
 const SECRET_KEY = "supersecretkey";
 
@@ -96,6 +97,71 @@ const token = jwt.sign(
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// ================= BUSINESS PROFILE =================
+
+// CREATE or UPDATE business profile
+app.post("/business-profile", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "business") {
+      return res.status(403).json({ error: "Only businesses allowed" });
+    }
+
+    const { name, description, contact, image } = req.body;
+
+    if (!(await fs.pathExists(BUSINESSES_FILE))) {
+      await fs.writeJson(BUSINESSES_FILE, []);
+    }
+
+    let businesses = await fs.readJson(BUSINESSES_FILE);
+
+    // Check if profile exists
+    const existing = businesses.find(b => b.userId === req.user.id);
+
+    if (existing) {
+      // UPDATE
+      businesses = businesses.map(b =>
+        b.userId === req.user.id
+          ? { ...b, name, description, contact, image }
+          : b
+      );
+    } else {
+      // CREATE
+      const newBusiness = {
+        userId: req.user.id,
+        name,
+        description,
+        contact,
+        image
+      };
+
+      businesses.push(newBusiness);
+    }
+
+    await fs.writeJson(BUSINESSES_FILE, businesses);
+
+    res.json({ message: "Profile saved ✅" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Profile failed" });
+  }
+});
+
+// GET all business profiles
+app.get("/business-profiles", async (req, res) => {
+  try {
+    if (!(await fs.pathExists(BUSINESSES_FILE))) {
+      await fs.writeJson(BUSINESSES_FILE, []); // ✅ FIX
+    }
+
+    const data = await fs.readJson(BUSINESSES_FILE);
+    res.json(data);
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load profiles" });
   }
 });
 
