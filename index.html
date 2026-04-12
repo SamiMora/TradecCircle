@@ -341,10 +341,10 @@ function showMine() {
 }
 
 async function addService() {
-  const name = nameInput.value;
-  const price = priceInput.value;
-  const category = categoryInput.value;
-  const file = image.files[0];
+  const name = document.getElementById("name").value;
+  const price = document.getElementById("price").value;
+  const category = document.getElementById("category").value;
+  const file = document.getElementById("image").files[0];
 
   let imageData = "";
 
