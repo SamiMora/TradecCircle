@@ -58,10 +58,19 @@
 
     button:hover {
       background: #ea580c;
+      opacity: 0.9;
+    }
+
+    #filters {
+      margin: 20px;
     }
 
     #filters button {
       background: #0ea5e9;
+    }
+
+    #filters button:hover {
+      background: #0284c7;
     }
 
     #searchInput {
@@ -69,8 +78,13 @@
       border: 1px solid #ccc;
     }
 
+    .logo-container {
+      margin-top: 20px;
+    }
+
     .logo {
       width: 100px;
+      margin-bottom: 10px;
     }
 
     .trade { color: #f97316; }
@@ -80,19 +94,26 @@
 
 <body>
 
-<img src="tradecircle-logo.png" class="logo" />
-<h1><span class="trade">Trade</span><span class="circle">Circle</span></h1>
+<div class="logo-container">
+  <img src="tradecircle-logo.png" class="logo" />
+  <h1>
+    <span class="trade">Trade</span><span class="circle">Circle</span>
+  </h1>
+</div>
 
 <!-- AUTH -->
 <div id="authSection">
   <h2>Login / Signup</h2>
+
   <input id="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
+
   <br>
   <select id="role">
     <option value="customer">Customer</option>
     <option value="business">Business</option>
   </select>
+
   <br>
   <button onclick="signup()">Sign Up</button>
   <button onclick="login()">Login</button>
@@ -100,44 +121,47 @@
 
 <!-- APP -->
 <div id="appSection" style="display:none;">
+
   <button onclick="logout()">Logout</button>
 
-  <input id="searchInput" placeholder="Search..." onkeyup="searchServices()"/>
+  <input id="searchInput" placeholder="Search services..." onkeyup="searchServices()" />
 
   <div id="filters">
     <button onclick="filterServices('All')">All</button>
     <button onclick="filterServices('Hair')">Hair</button>
     <button onclick="filterServices('Auto')">Auto</button>
+    <button onclick="filterServices('Photography')">Photography</button>
+  </div>
+
+  <div>
+    <button onclick="showAll()">🌍 All Services</button>
+    <button onclick="showMine()">👤 My Services</button>
   </div>
 
   <div class="container" id="serviceList"></div>
 
-  <!-- BUSINESS PROFILE DISPLAY -->
-  <div id="profileView" style="display:none;">
-    <h2 id="profileName"></h2>
-    <p id="profileDesc"></p>
-    <p id="profileContact"></p>
-    <button onclick="closeProfile()">Back</button>
-  </div>
-
   <!-- ADD SERVICE -->
   <div id="addServiceSection" style="display:none;">
-    <h3>Add Service</h3>
+    <h2>Add Service</h2>
     <input id="name" placeholder="Service name">
     <input id="price" placeholder="Price">
     <input id="category" placeholder="Category">
     <input type="file" id="image">
+    <br>
     <button onclick="addService()">Add</button>
   </div>
 
   <!-- BUSINESS PROFILE -->
   <div id="businessProfileSection" style="display:none;">
-    <h3>Business Profile</h3>
+    <h2>Business Profile</h2>
     <input id="bizName" placeholder="Business Name">
-    <input id="bizContact" placeholder="Contact">
+    <input id="bizContact" placeholder="Contact Info">
     <input id="bizDescription" placeholder="Description">
-    <button onclick="saveBusinessProfile()">Save</button>
+    <input type="file" id="bizImage">
+    <br>
+    <button onclick="saveBusinessProfile()">Save Profile</button>
   </div>
+
 </div>
 
 <script>
@@ -145,194 +169,263 @@ const BASE_URL = "https://tradeccircle-api.onrender.com";
 const API_URL = BASE_URL + "/services";
 
 let allServices = [];
+let allBusinesses = [];
 let currentUser = null;
 let token = localStorage.getItem("token");
 
-// Decode user
+// Decode JWT
 function decodeUser() {
+  if (!token) return null;
   try {
-    return token ? JSON.parse(atob(token.split(".")[1])) : null;
+    return JSON.parse(atob(token.split(".")[1]));
   } catch {
     return null;
   }
 }
 
-// AUTH
+// AUTH CHECK
 function checkAuth() {
   token = localStorage.getItem("token");
   currentUser = decodeUser();
 
-  const authSection = document.getElementById("authSection");
-  const appSection = document.getElementById("appSection");
-  const addServiceSection = document.getElementById("addServiceSection");
-  const businessProfileSection = document.getElementById("businessProfileSection");
-
   if (token && currentUser) {
-    authSection.style.display = "none";
-    appSection.style.display = "block";
+    document.getElementById("authSection").style.display = "none";
+    document.getElementById("appSection").style.display = "block";
 
-    // 🔒 ALWAYS hide first (prevents leaks)
-    addServiceSection.style.display = "none";
-    businessProfileSection.style.display = "none";
+    // ALWAYS reset first
+    document.getElementById("addServiceSection").style.display = "none";
+    document.getElementById("businessProfileSection").style.display = "none";
 
-    // ✅ ONLY show for business accounts
     if (currentUser.role === "business") {
-      addServiceSection.style.display = "block";
-      businessProfileSection.style.display = "block";
+      document.getElementById("addServiceSection").style.display = "block";
+      document.getElementById("businessProfileSection").style.display = "block";
     }
 
-    loadServices();
+    loadAllData();
   } else {
-    authSection.style.display = "block";
-    appSection.style.display = "none";
+    document.getElementById("authSection").style.display = "block";
+    document.getElementById("appSection").style.display = "none";
   }
 }
 
+// SIGNUP
 async function signup() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const role = document.getElementById("role").value;
+
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      email: email.value,
-      password: password.value,
-      role: role.value
-    })
+    body: JSON.stringify({ email, password, role })
   });
 
-  alert((await res.json()).message);
+  const data = await res.json();
+  alert(data.message || data.error);
 }
 
+// LOGIN
 async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
   const res = await fetch(BASE_URL + "/login", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      email: email.value,
-      password: password.value
-    })
+    body: JSON.stringify({ email, password })
   });
 
   const data = await res.json();
 
   if (data.token) {
     localStorage.setItem("token", data.token);
+    token = data.token;
+    currentUser = decodeUser();
     checkAuth();
+  } else {
+    alert(data.error);
   }
 }
 
+// LOGOUT
 function logout() {
   localStorage.removeItem("token");
+  token = null;
+  currentUser = null;
   checkAuth();
 }
 
-// BUSINESS
+// BUSINESS PROFILE
 async function saveBusinessProfile() {
-  await fetch(BASE_URL + "/business-profile", {
+  const name = document.getElementById("bizName").value;
+  const contact = document.getElementById("bizContact").value;
+  const description = document.getElementById("bizDescription").value;
+  const file = document.getElementById("bizImage").files[0];
+
+  let image = "";
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      image = reader.result;
+      await sendProfile(name, contact, description, image);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await sendProfile(name, contact, description, image);
+  }
+}
+
+async function sendProfile(name, contact, description, image) {
+  const res = await fetch(BASE_URL + "/business-profile", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
-    body: JSON.stringify({
-      name: bizName.value,
-      contact: bizContact.value,
-      description: bizDescription.value
-    })
+    body: JSON.stringify({ name, contact, description, image })
   });
 
-  alert("Saved ✅");
+  const data = await res.json();
+  alert(data.message || data.error);
 }
 
-// LOAD
-async function loadServices() {
-  const res = await fetch(API_URL);
-  allServices = await res.json();
+// LOAD ALL DATA
+async function loadAllData() {
+  const [servicesRes, businessRes] = await Promise.all([
+    fetch(API_URL),
+    fetch(BASE_URL + "/business-profiles")
+  ]);
+
+  allServices = await servicesRes.json();
+  allBusinesses = await businessRes.json();
+
   displayServices(allServices);
 }
 
-async function displayServices(services) {
-  const res = await fetch(BASE_URL + "/business-profiles");
-  const businesses = await res.json();
+// DISPLAY SERVICES
+function displayServices(services) {
+  const container = document.getElementById("serviceList");
+  container.innerHTML = "";
 
-  serviceList.innerHTML = "";
+  services.forEach(service => {
+    const isOwner = currentUser && service.userId === currentUser.id;
+    const business = allBusinesses.find(b => b.userId === service.userId);
 
-  services.forEach(s => {
-    const biz = businesses.find(b => b.userId === s.userId);
-
-    serviceList.innerHTML += `
-      <div class="card" onclick="openBusiness(${s.userId})">
-        <h3>${s.name}</h3>
-        <p>$${s.price}</p>
-        <p>${s.category}</p>
-        <p>⭐ ${s.rating}</p>
-        <p><b>${biz ? biz.name : "Unknown"}</b></p>
-
-        ${currentUser?.id === s.userId ? `
-          <button onclick="event.stopPropagation(); editService(${s.id})">Edit</button>
-          <button onclick="event.stopPropagation(); deleteService(${s.id})">Delete</button>
-        ` : ""}
+    container.innerHTML += `
+      <div class="card" onclick="viewBusiness(${service.userId})">
+        <img src="${service.image || 'tradecircle-logo.png'}" />
+        <h3>${service.name}</h3>
+        <p>$${service.price}</p>
+        <p>${service.category}</p>
+        <p><strong>${business ? business.name : "Unknown Business"}</strong></p>
+        ${isOwner ? `<button onclick="event.stopPropagation(); deleteService(${service.id})">Delete ❌</button>` : ""}
       </div>
     `;
   });
 }
 
-// ACTIONS
+// VIEW BUSINESS
+function viewBusiness(userId) {
+  const business = allBusinesses.find(b => b.userId === userId);
+  if (!business) return alert("No business profile");
+
+  alert(`${business.name}\n\n${business.description}\n\nContact: ${business.contact}`);
+}
+
+// VIEW TOGGLES
+function showAll() {
+  displayServices(allServices);
+}
+
+function showMine() {
+  displayServices(allServices.filter(s => s.userId === currentUser.id));
+}
+
+// ADD SERVICE
 async function addService() {
-  await fetch(API_URL, {
+  const name = document.getElementById("name").value;
+  const price = document.getElementById("price").value;
+  const category = document.getElementById("category").value;
+  const file = document.getElementById("image").files[0];
+
+  let imageData = "";
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      imageData = reader.result;
+      await saveService(name, price, category, imageData);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await saveService(name, price, category, imageData);
+  }
+}
+
+async function saveService(name, price, category, image) {
+  const res = await fetch(API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
-    body: JSON.stringify({
-      name: name.value,
-      price: price.value,
-      category: category.value
-    })
+    body: JSON.stringify({ name, price, category, image })
   });
 
-  loadServices();
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  loadAllData();
 }
 
-async function editService(id) {
-  const nameVal = prompt("New name:");
-  const priceVal = prompt("New price:");
-
-  await fetch(API_URL + "/" + id, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ name: nameVal, price: priceVal })
-  });
-
-  loadServices();
-}
-
+// DELETE SERVICE
 async function deleteService(id) {
-  await fetch(API_URL + "/" + id, {
+  const res = await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
     headers: {
       "Authorization": `Bearer ${token}`
     }
   });
 
-  loadServices();
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  loadAllData();
 }
 
-function openBusiness(userId) {
-  fetch(BASE_URL + "/business-profiles")
-    .then(r => r.json())
-    .then(data => {
-      const b = data.find(x => x.userId === userId);
-      if (b) {
-        alert(`🏪 ${b.name}\n📞 ${b.contact}\n📝 ${b.description}`);
-      }
-    });
+// SEARCH
+function searchServices() {
+  const input = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = allServices.filter(service =>
+    service.name.toLowerCase().includes(input) ||
+    service.category.toLowerCase().includes(input)
+  );
+
+  displayServices(filtered);
+}
+
+// FILTER
+function filterServices(category) {
+  if (category === "All") {
+    displayServices(allServices);
+  } else {
+    displayServices(allServices.filter(s => s.category === category));
+  }
 }
 
 // INIT
 checkAuth();
 </script>
+
 </body>
+</html>
