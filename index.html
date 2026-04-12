@@ -345,7 +345,7 @@ function displayServices(services) {
 }
 
 // VIEW BUSINESS
-function viewBusiness(userId) {
+window.viewBusiness = function(userId) {
   const business = allBusinesses.find(b => b.userId === userId);
   if (!business) return alert("No business profile");
 
@@ -395,7 +395,7 @@ function showMine() {
 }
 
 // ADD SERVICE
-async function addService() {
+window.addService = async function() {
   const name = document.getElementById("name").value;
   const price = document.getElementById("price").value;
   const category = document.getElementById("category").value;
@@ -480,7 +480,7 @@ async function handleSave(name, price, category, image) {
 }
 
 // DELETE SERVICE
-async function deleteService(id) {
+window.deleteService = async function(id) {
   const res = await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
     headers: {
