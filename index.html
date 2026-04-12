@@ -142,115 +142,59 @@
 
 <script>
 const BASE_URL = "https://tradeccircle-api.onrender.com";
+const API_URL = BASE_URL + "/services";
 
-let token = localStorage.getItem("token");
-let currentUser = null;
 let allServices = [];
-let businesses = [];
+let currentUser = null;
+let token = localStorage.getItem("token");
 
 // Decode user
 function decodeUser() {
-  if (!token) return null;
-  return JSON.parse(atob(token.split(".")[1]));
-}
-
-// AUTH CHECK
-function checkAuth() {
-  const authSection = document.getElementById("authSection");
-  const appSection = document.getElementById("appSection");
-
-  token = localStorage.getItem("token");
-  currentUser = decodeUser();
-
-  if (token && currentUser) {
-    authSection.style.display = "none";
-    appSection.style.display = "block";
-
-    if (currentUser.role === "business") {
-      document.getElementById("addServiceSection").style.display = "block";
-      document.getElementById("businessProfileSection").style.display = "block";
-    }
-
-    loadAll();
-  } else {
-    authSection.style.display = "block";
-    appSection.style.display = "none";
+  try {
+    return token ? JSON.parse(atob(token.split(".")[1])) : null;
+  } catch {
+    return null;
   }
 }
 
-// LOAD EVERYTHING
-async function loadAll() {
-  const s = await fetch(BASE_URL + "/services");
-  allServices = await s.json();
-
-  const b = await fetch(BASE_URL + "/business-profiles");
-  businesses = await b.json();
-
-  displayServices(allServices);
-}
-
-// DISPLAY SERVICES
-function displayServices(services) {
-  const list = document.getElementById("serviceList");
-  list.innerHTML = "";
-
-  services.forEach(service => {
-    const biz = businesses.find(b => b.userId === service.userId);
-
-    list.innerHTML += `
-      <div class="card" onclick="openProfile(${service.userId})">
-        <img src="${service.image || 'tradecircle-logo.png'}"/>
-        <h3>${service.name}</h3>
-        <p>$${service.price}</p>
-        <p>${service.category}</p>
-        <p><b>${biz ? biz.name : "Unknown Business"}</b></p>
-      </div>
-    `;
-  });
-}
-
-// OPEN PROFILE
-function openProfile(userId) {
-  const biz = businesses.find(b => b.userId === userId);
-  if (!biz) return;
-
-  document.getElementById("profileView").style.display = "block";
-  document.getElementById("serviceList").style.display = "none";
-
-  document.getElementById("profileName").innerText = biz.name;
-  document.getElementById("profileDesc").innerText = biz.description;
-  document.getElementById("profileContact").innerText = biz.contact;
-}
-
-function closeProfile() {
-  document.getElementById("profileView").style.display = "none";
-  document.getElementById("serviceList").style.display = "flex";
-}
-
 // AUTH
-async function signup() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const role = document.getElementById("role").value;
+function checkAuth() {
+  token = localStorage.getItem("token");
+  currentUser = decodeUser();
 
+  authSection.style.display = token ? "none" : "block";
+  appSection.style.display = token ? "block" : "none";
+
+  if (currentUser?.role === "business") {
+    addServiceSection.style.display = "block";
+    businessProfileSection.style.display = "block";
+  }
+
+  loadServices();
+}
+
+async function signup() {
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({email,password,role})
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      email: email.value,
+      password: password.value,
+      role: role.value
+    })
   });
 
-  const data = await res.json();
-  alert(data.message || data.error);
+  alert((await res.json()).message);
 }
 
 async function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
   const res = await fetch(BASE_URL + "/login", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({email,password})
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      email: email.value,
+      password: password.value
+    })
   });
 
   const data = await res.json();
@@ -266,63 +210,115 @@ function logout() {
   checkAuth();
 }
 
-// ADD SERVICE
-async function addService() {
-  const name = document.getElementById("name").value;
-  const price = document.getElementById("price").value;
-  const category = document.getElementById("category").value;
-
-  await fetch(BASE_URL + "/services", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+token
-    },
-    body: JSON.stringify({name,price,category})
-  });
-
-  loadAll();
-}
-
-// SAVE PROFILE
+// BUSINESS
 async function saveBusinessProfile() {
-  const name = document.getElementById("bizName").value;
-  const contact = document.getElementById("bizContact").value;
-  const description = document.getElementById("bizDescription").value;
-
   await fetch(BASE_URL + "/business-profile", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+token
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
     },
-    body: JSON.stringify({name,contact,description})
+    body: JSON.stringify({
+      name: bizName.value,
+      contact: bizContact.value,
+      description: bizDescription.value
+    })
   });
 
-  loadAll();
+  alert("Saved ✅");
 }
 
-// SEARCH
-function searchServices() {
-  const input = document.getElementById("searchInput").value.toLowerCase();
-
-  const filtered = allServices.filter(s =>
-    s.name.toLowerCase().includes(input) ||
-    s.category.toLowerCase().includes(input)
-  );
-
-  displayServices(filtered);
+// LOAD
+async function loadServices() {
+  const res = await fetch(API_URL);
+  allServices = await res.json();
+  displayServices(allServices);
 }
 
-// FILTER
-function filterServices(category) {
-  if (category === "All") return displayServices(allServices);
-  displayServices(allServices.filter(s => s.category === category));
+async function displayServices(services) {
+  const res = await fetch(BASE_URL + "/business-profiles");
+  const businesses = await res.json();
+
+  serviceList.innerHTML = "";
+
+  services.forEach(s => {
+    const biz = businesses.find(b => b.userId === s.userId);
+
+    serviceList.innerHTML += `
+      <div class="card" onclick="openBusiness(${s.userId})">
+        <h3>${s.name}</h3>
+        <p>$${s.price}</p>
+        <p>${s.category}</p>
+        <p>⭐ ${s.rating}</p>
+        <p><b>${biz ? biz.name : "Unknown"}</b></p>
+
+        ${currentUser?.id === s.userId ? `
+          <button onclick="event.stopPropagation(); editService(${s.id})">Edit</button>
+          <button onclick="event.stopPropagation(); deleteService(${s.id})">Delete</button>
+        ` : ""}
+      </div>
+    `;
+  });
+}
+
+// ACTIONS
+async function addService() {
+  await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      name: name.value,
+      price: price.value,
+      category: category.value
+    })
+  });
+
+  loadServices();
+}
+
+async function editService(id) {
+  const nameVal = prompt("New name:");
+  const priceVal = prompt("New price:");
+
+  await fetch(API_URL + "/" + id, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ name: nameVal, price: priceVal })
+  });
+
+  loadServices();
+}
+
+async function deleteService(id) {
+  await fetch(API_URL + "/" + id, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  loadServices();
+}
+
+function openBusiness(userId) {
+  fetch(BASE_URL + "/business-profiles")
+    .then(r => r.json())
+    .then(data => {
+      const b = data.find(x => x.userId === userId);
+      if (b) {
+        alert(`🏪 ${b.name}\n📞 ${b.contact}\n📝 ${b.description}`);
+      }
+    });
 }
 
 // INIT
 checkAuth();
 </script>
-
 </body>
 </html>
