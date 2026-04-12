@@ -100,11 +100,31 @@ const token = jwt.sign(
   }
 });
 
+// ================= AUTH =================
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) return res.status(401).json({ error: "Access denied" });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ error: "Invalid token" });
+    req.user = user;
+    next();
+  });
+}
+
 // ================= BUSINESS PROFILE =================
 
 // CREATE or UPDATE business profile
 app.post("/business-profile", authenticateToken, async (req, res) => {
   try {
+
+    console.log("BODY:", req.body);
+console.log("USER:", req.user);
+
+
     if (req.user.role !== "business") {
       return res.status(403).json({ error: "Only businesses allowed" });
     }
@@ -165,20 +185,7 @@ app.get("/business-profiles", async (req, res) => {
   }
 });
 
-// ================= AUTH =================
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) return res.status(401).json({ error: "Access denied" });
-
-  jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.status(403).json({ error: "Invalid token" });
-    req.user = user;
-    next();
-  });
-}
 
 // ================= SERVICES =================
 
