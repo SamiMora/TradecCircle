@@ -1,12 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TradeCircle 🌌</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: linear-gradient(to bottom, #ffffff, #f8fafc);
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .card {
+      background: white;
+      margin: 15px;
+      padding: 15px;
+      border-radius: 12px;
+      width: 250px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: orange;
+      color: white;
+      cursor: pointer;
+    }
+
+    input, select {
+      padding: 8px;
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🌌 TradeCircle</h1>
+
+<!-- AUTH -->
+<div id="authSection">
+  <h2>Login / Signup</h2>
+
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+
+  <br>
+  <select id="role">
+    <option value="customer">Customer</option>
+    <option value="business">Business</option>
+  </select>
+
+  <br>
+  <button onclick="signup()">Sign Up</button>
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div id="appSection" style="display:none;">
+
+  <button onclick="logout()">Logout</button>
+
+  <h2>Services</h2>
+
+  <div class="container" id="serviceList"></div>
+
+  <!-- ADD SERVICE -->
+  <div id="addServiceSection" style="display:none;">
+    <h3>Add Service</h3>
+    <input id="name" placeholder="Service name">
+    <input id="price" placeholder="Price">
+    <input id="category" placeholder="Category">
+    <button onclick="addService()">Add</button>
+  </div>
+
+  <!-- BUSINESS PROFILE -->
+  <div id="businessProfileSection" style="display:none;">
+    <h3>Business Profile</h3>
+    <input id="bizName" placeholder="Business Name">
+    <input id="bizContact" placeholder="Contact">
+    <input id="bizDescription" placeholder="Description">
+    <button onclick="saveBusinessProfile()">Save Profile</button>
+  </div>
+
+</div>
+
 <script>
 const BASE_URL = "https://tradeccircle-api.onrender.com";
 const API_URL = BASE_URL + "/services";
 
-let allServices = [];
-let currentUser = null;
 let token = localStorage.getItem("token");
+let currentUser = null;
+let allServices = [];
 
-// Decode user
+// Decode JWT
 function decodeUser() {
   try {
     return token ? JSON.parse(atob(token.split(".")[1])) : null;
@@ -15,43 +111,61 @@ function decodeUser() {
   }
 }
 
-// AUTH
+// ================= AUTH =================
+
 function checkAuth() {
   token = localStorage.getItem("token");
   currentUser = decodeUser();
 
-  authSection.style.display = token ? "none" : "block";
-  appSection.style.display = token ? "block" : "none";
+  const authSection = document.getElementById("authSection");
+  const appSection = document.getElementById("appSection");
+  const addServiceSection = document.getElementById("addServiceSection");
+  const businessProfileSection = document.getElementById("businessProfileSection");
 
-  if (currentUser?.role === "business") {
-    addServiceSection.style.display = "block";
-    businessProfileSection.style.display = "block";
+  if (token && currentUser) {
+    authSection.style.display = "none";
+    appSection.style.display = "block";
+
+    if (currentUser.role === "business") {
+      addServiceSection.style.display = "block";
+      businessProfileSection.style.display = "block";
+    } else {
+      addServiceSection.style.display = "none";
+      businessProfileSection.style.display = "none";
+    }
+
+    loadServices();
+
+  } else {
+    authSection.style.display = "block";
+    appSection.style.display = "none";
   }
-
-  loadServices();
 }
 
+// SIGNUP
 async function signup() {
   const res = await fetch(BASE_URL + "/signup", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
-      email: email.value,
-      password: password.value,
-      role: role.value
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value,
+      role: document.getElementById("role").value
     })
   });
 
-  alert((await res.json()).message);
+  const data = await res.json();
+  alert(data.message || data.error);
 }
 
+// LOGIN
 async function login() {
   const res = await fetch(BASE_URL + "/login", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
-      email: email.value,
-      password: password.value
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
     })
   });
 
@@ -60,15 +174,19 @@ async function login() {
   if (data.token) {
     localStorage.setItem("token", data.token);
     checkAuth();
+  } else {
+    alert(data.error);
   }
 }
 
+// LOGOUT
 function logout() {
   localStorage.removeItem("token");
   checkAuth();
 }
 
-// BUSINESS
+// ================= BUSINESS =================
+
 async function saveBusinessProfile() {
   await fetch(BASE_URL + "/business-profile", {
     method: "POST",
@@ -77,16 +195,17 @@ async function saveBusinessProfile() {
       "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify({
-      name: bizName.value,
-      contact: bizContact.value,
-      description: bizDescription.value
+      name: document.getElementById("bizName").value,
+      contact: document.getElementById("bizContact").value,
+      description: document.getElementById("bizDescription").value
     })
   });
 
-  alert("Saved ✅");
+  alert("Profile saved ✅");
 }
 
-// LOAD
+// ================= SERVICES =================
+
 async function loadServices() {
   const res = await fetch(API_URL);
   allServices = await res.json();
@@ -94,6 +213,8 @@ async function loadServices() {
 }
 
 async function displayServices(services) {
+  const serviceList = document.getElementById("serviceList");
+
   const res = await fetch(BASE_URL + "/business-profiles");
   const businesses = await res.json();
 
@@ -107,10 +228,10 @@ async function displayServices(services) {
         <h3>${s.name}</h3>
         <p>$${s.price}</p>
         <p>${s.category}</p>
-        <p>⭐ ${s.rating}</p>
-        <p><b>${biz ? biz.name : "Unknown"}</b></p>
+        <p>⭐ ${s.rating || 5}</p>
+        <p><b>${biz ? biz.name : "Unknown Business"}</b></p>
 
-        ${currentUser?.id === s.userId ? `
+        ${currentUser && currentUser.id === s.userId ? `
           <button onclick="event.stopPropagation(); editService(${s.id})">Edit</button>
           <button onclick="event.stopPropagation(); deleteService(${s.id})">Delete</button>
         ` : ""}
@@ -119,7 +240,7 @@ async function displayServices(services) {
   });
 }
 
-// ACTIONS
+// ADD
 async function addService() {
   await fetch(API_URL, {
     method: "POST",
@@ -128,18 +249,19 @@ async function addService() {
       "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify({
-      name: name.value,
-      price: price.value,
-      category: category.value
+      name: document.getElementById("name").value,
+      price: document.getElementById("price").value,
+      category: document.getElementById("category").value
     })
   });
 
   loadServices();
 }
 
+// EDIT
 async function editService(id) {
-  const nameVal = prompt("New name:");
-  const priceVal = prompt("New price:");
+  const name = prompt("New name:");
+  const price = prompt("New price:");
 
   await fetch(API_URL + "/" + id, {
     method: "PUT",
@@ -147,12 +269,13 @@ async function editService(id) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
-    body: JSON.stringify({ name: nameVal, price: priceVal })
+    body: JSON.stringify({ name, price })
   });
 
   loadServices();
 }
 
+// DELETE
 async function deleteService(id) {
   await fetch(API_URL + "/" + id, {
     method: "DELETE",
@@ -164,9 +287,10 @@ async function deleteService(id) {
   loadServices();
 }
 
+// VIEW BUSINESS
 function openBusiness(userId) {
   fetch(BASE_URL + "/business-profiles")
-    .then(r => r.json())
+    .then(res => res.json())
     .then(data => {
       const b = data.find(x => x.userId === userId);
       if (b) {
@@ -178,3 +302,6 @@ function openBusiness(userId) {
 // INIT
 checkAuth();
 </script>
+
+</body>
+</html>
