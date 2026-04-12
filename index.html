@@ -262,10 +262,10 @@ function logout() {
 
 // BUSINESS PROFILE
 async function saveBusinessProfile() {
-  const name = bizName.value;
-  const contact = bizContact.value;
-  const description = bizDescription.value;
-  const file = bizImage.files[0];
+  const name = document.getElementById("bizName").value;
+const contact = document.getElementById("bizContact").value;
+const description = document.getElementById("bizDescription").value;
+const file = document.getElementById("bizImage").files[0];
 
   let image = "";
 
