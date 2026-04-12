@@ -140,11 +140,17 @@ app.post("/business-profile", authenticateToken, async (req, res) => {
     let businesses = [];
 
 try {
+  if (!(await fs.pathExists(BUSINESSES_FILE))) {
+    await fs.writeJson(BUSINESSES_FILE, []);
+  }
+
   businesses = await fs.readJson(BUSINESSES_FILE);
+
 } catch (err) {
-  console.log("⚠️ Fixing corrupted businesses.json");
+  console.log("⚠️ businesses.json corrupted — resetting file");
+
   businesses = [];
-  await fs.writeJson(BUSINESSES_FILE, businesses);
+  await fs.writeJson(BUSINESSES_FILE, []);
 }
 
     const existing = businesses.find(b => b.userId === req.user.id);
